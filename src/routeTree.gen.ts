@@ -10,33 +10,119 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAtividadeRouteImport } from './routes/_authenticated/atividade'
+import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
+import { Route as AuthenticatedEscanearRouteImport } from './routes/_authenticated/escanear'
+import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
+import { Route as AuthenticatedSemanaRouteImport } from './routes/_authenticated/semana'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAtividadeRoute = AuthenticatedAtividadeRouteImport.update({
+  id: '/atividade',
+  path: '/atividade',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedConfiguracoesRoute =
+  AuthenticatedConfiguracoesRouteImport.update({
+    id: '/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedEscanearRoute = AuthenticatedEscanearRouteImport.update({
+  id: '/escanear',
+  path: '/escanear',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSemanaRoute = AuthenticatedSemanaRouteImport.update({
+  id: '/semana',
+  path: '/semana',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/atividade': typeof AuthenticatedAtividadeRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/escanear': typeof AuthenticatedEscanearRoute
+  '/feed': typeof AuthenticatedFeedRoute
+  '/semana': typeof AuthenticatedSemanaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/atividade': typeof AuthenticatedAtividadeRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/escanear': typeof AuthenticatedEscanearRoute
+  '/feed': typeof AuthenticatedFeedRoute
+  '/semana': typeof AuthenticatedSemanaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/atividade': typeof AuthenticatedAtividadeRoute
+  '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/_authenticated/escanear': typeof AuthenticatedEscanearRoute
+  '/_authenticated/feed': typeof AuthenticatedFeedRoute
+  '/_authenticated/semana': typeof AuthenticatedSemanaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/atividade'
+    | '/configuracoes'
+    | '/escanear'
+    | '/feed'
+    | '/semana'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/atividade'
+    | '/configuracoes'
+    | '/escanear'
+    | '/feed'
+    | '/semana'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/atividade'
+    | '/_authenticated/configuracoes'
+    | '/_authenticated/escanear'
+    | '/_authenticated/feed'
+    | '/_authenticated/semana'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +134,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/atividade': {
+      id: '/_authenticated/atividade'
+      path: '/atividade'
+      fullPath: '/atividade'
+      preLoaderRoute: typeof AuthenticatedAtividadeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/configuracoes': {
+      id: '/_authenticated/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof AuthenticatedConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/escanear': {
+      id: '/_authenticated/escanear'
+      path: '/escanear'
+      fullPath: '/escanear'
+      preLoaderRoute: typeof AuthenticatedEscanearRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/feed': {
+      id: '/_authenticated/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof AuthenticatedFeedRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/semana': {
+      id: '/_authenticated/semana'
+      path: '/semana'
+      fullPath: '/semana'
+      preLoaderRoute: typeof AuthenticatedSemanaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAtividadeRoute: typeof AuthenticatedAtividadeRoute
+  AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
+  AuthenticatedEscanearRoute: typeof AuthenticatedEscanearRoute
+  AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
+  AuthenticatedSemanaRoute: typeof AuthenticatedSemanaRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAtividadeRoute: AuthenticatedAtividadeRoute,
+  AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
+  AuthenticatedEscanearRoute: AuthenticatedEscanearRoute,
+  AuthenticatedFeedRoute: AuthenticatedFeedRoute,
+  AuthenticatedSemanaRoute: AuthenticatedSemanaRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
