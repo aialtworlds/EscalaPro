@@ -14,7 +14,205 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      absences: {
+        Row: {
+          absence_date: string
+          created_at: string
+          employee_id: string
+          id: string
+          owner_id: string
+          reason: string | null
+        }
+        Insert: {
+          absence_date: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          owner_id: string
+          reason?: string | null
+        }
+        Update: {
+          absence_date?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          owner_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "absences_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_log: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          owner_id: string
+          payload: Json
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          owner_id: string
+          payload?: Json
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          owner_id?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
+      employees: {
+        Row: {
+          created_at: string
+          entry_time: string
+          id: string
+          journey_hours: number
+          name: string
+          owner_id: string
+          role_profile: Database["public"]["Enums"]["role_profile"]
+          sector_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          entry_time?: string
+          id?: string
+          journey_hours?: number
+          name: string
+          owner_id: string
+          role_profile?: Database["public"]["Enums"]["role_profile"]
+          sector_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          entry_time?: string
+          id?: string
+          journey_hours?: number
+          name?: string
+          owner_id?: string
+          role_profile?: Database["public"]["Enums"]["role_profile"]
+          sector_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      sectors: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
+      shifts: {
+        Row: {
+          created_at: string
+          employee_id: string | null
+          end_time: string
+          freelancer_label: string | null
+          id: string
+          is_extra: boolean
+          is_freelancer: boolean
+          owner_id: string
+          sector_id: string | null
+          shift_date: string
+          start_time: string
+          status: Database["public"]["Enums"]["shift_status"]
+        }
+        Insert: {
+          created_at?: string
+          employee_id?: string | null
+          end_time: string
+          freelancer_label?: string | null
+          id?: string
+          is_extra?: boolean
+          is_freelancer?: boolean
+          owner_id: string
+          sector_id?: string | null
+          shift_date: string
+          start_time: string
+          status?: Database["public"]["Enums"]["shift_status"]
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string | null
+          end_time?: string
+          freelancer_label?: string | null
+          id?: string
+          is_extra?: boolean
+          is_freelancer?: boolean
+          owner_id?: string
+          sector_id?: string | null
+          shift_date?: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["shift_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shifts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +221,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      role_profile: "clt_regular" | "estagiario" | "clt_mulher"
+      shift_status: "scheduled" | "absent" | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +349,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      role_profile: ["clt_regular", "estagiario", "clt_mulher"],
+      shift_status: ["scheduled", "absent", "completed"],
+    },
   },
 } as const
