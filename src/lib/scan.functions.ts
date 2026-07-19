@@ -35,7 +35,7 @@ export const scanSchedule = createServerFn({ method: "POST" })
     const model = gateway("google/gemini-2.5-flash");
 
     try {
-      const { experimental_output } = await generateText({
+      const { output } = await generateText({
         model,
         output: Output.object({ schema: scanSchema }),
         messages: [
@@ -53,7 +53,7 @@ export const scanSchedule = createServerFn({ method: "POST" })
           },
         ],
       });
-      return experimental_output;
+      return output;
     } catch (err) {
       if (err instanceof Error && err.message.includes("429")) {
         throw new Error("Limite de uso da IA atingido. Aguarde alguns instantes e tente de novo.");
