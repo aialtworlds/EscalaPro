@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Entrar — EscalaPro OS" },
-      { name: "description", content: "Acesse seu mural operacional de escala." },
+      { title: "Entrar — EscalaPro" },
+      { name: "description", content: "Acesse o console operacional de escalas EscalaPro." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -60,41 +60,125 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <p className="font-mono text-xs tracking-[0.3em] text-primary font-bold uppercase mb-2">EscalaPro OS</p>
-          <h1 className="text-2xl font-bold tracking-tight">Mural Operacional</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {mode === "signin" ? "Entre para operar sua escala" : "Crie sua conta operacional"}
-          </p>
+    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+      {/* Ambient grid + glow */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.07]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-40 -left-32 h-96 w-96 rounded-full bg-primary/25 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-40 -right-32 h-96 w-96 rounded-full bg-primary/15 blur-3xl"
+      />
+
+      <div className="relative flex min-h-screen flex-col px-6 py-10">
+        {/* Top status strip */}
+        <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+          <span className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            Console v1.0
+          </span>
+          <span>PT-BR</span>
         </div>
-        <form onSubmit={onSubmit} className="space-y-4 bg-card p-6 rounded-xl border shadow-sm">
-          {mode === "signup" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="name">Seu nome</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Como devemos te chamar" />
+
+        {/* Hero brand */}
+        <div className="flex flex-1 flex-col justify-center">
+          <div className="mb-10">
+            <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-muted-foreground mb-3">
+              Sistema Operacional de Escala
+            </p>
+            <h1 className="font-black leading-[0.85] tracking-tight">
+              <span className="block text-[3.75rem] sm:text-7xl">Escala</span>
+              <span className="block text-[3.75rem] sm:text-7xl text-primary">Pro.</span>
+            </h1>
+            <div className="mt-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+                {mode === "signin" ? "Autenticação" : "Novo operador"}
+              </p>
             </div>
-          )}
-          <div className="space-y-1.5">
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Senha</Label>
-            <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === "signin" ? "current-password" : "new-password"} />
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Aguarde..." : mode === "signin" ? "Entrar" : "Criar conta"}
-          </Button>
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="w-full text-xs text-muted-foreground hover:text-foreground transition"
-          >
-            {mode === "signin" ? "Não tem conta? Cadastre-se" : "Já tem conta? Entrar"}
-          </button>
-        </form>
+
+          {/* Form */}
+          <form onSubmit={onSubmit} className="space-y-4">
+            {mode === "signup" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Nome
+                </Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Como te chamamos"
+                  className="h-12 rounded-none border-0 border-b border-border bg-transparent px-0 text-base focus-visible:border-primary focus-visible:ring-0"
+                />
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                E-mail
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="voce@empresa.com"
+                className="h-12 rounded-none border-0 border-b border-border bg-transparent px-0 text-base focus-visible:border-primary focus-visible:ring-0"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Senha
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                placeholder="••••••••"
+                className="h-12 rounded-none border-0 border-b border-border bg-transparent px-0 text-base focus-visible:border-primary focus-visible:ring-0"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="mt-6 h-14 w-full rounded-none font-mono text-xs uppercase tracking-[0.3em]"
+            >
+              {loading ? "Processando..." : mode === "signin" ? "Entrar no console →" : "Criar operador →"}
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+              className="w-full pt-2 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition"
+            >
+              {mode === "signin" ? "Sem acesso? Cadastrar operador" : "Já tenho acesso · Entrar"}
+            </button>
+          </form>
+        </div>
+
+        {/* Footer strip */}
+        <div className="mt-10 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+          <span>© EscalaPro</span>
+          <span className="text-primary">● Online</span>
+        </div>
       </div>
     </div>
   );
