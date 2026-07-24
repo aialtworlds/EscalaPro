@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" ? s.next : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Entrar — EscalaPro" },
@@ -17,8 +20,17 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+function safeNext(next: string | undefined): string {
+  if (!next) return "/feed";
+  // only accept same-origin relative paths
+  if (next.startsWith("/") && !next.startsWith("//")) return next;
+  return "/feed";
+}
+
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
+  const target = safeNext(next);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,9 +39,9 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/feed" });
+      if (data.session) navigate({ to: target });
     });
-  }, [navigate]);
+  }, [navigate, target]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,7 +52,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}${target}`,
             data: { display_name: name || email.split("@")[0] },
           },
         });
@@ -50,7 +62,7 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/feed" });
+        navigate({ to: target });
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha na autenticação");
