@@ -52,7 +52,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}${target}`,
             data: { display_name: name || email.split("@")[0] },
           },
         });
@@ -62,7 +62,7 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/feed" });
+        navigate({ to: target });
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha na autenticação");
