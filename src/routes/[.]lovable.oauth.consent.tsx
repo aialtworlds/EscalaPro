@@ -123,7 +123,7 @@ function Consent() {
                 Escopos solicitados
               </p>
               <ul className="text-sm space-y-1">
-                {scopes.map((s) => (
+                {scopes.map((s: string) => (
                   <li key={s} className="font-mono">• {s}</li>
                 ))}
               </ul>
