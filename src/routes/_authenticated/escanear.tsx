@@ -5,10 +5,11 @@ import { toast } from "sonner";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, Upload, Sparkles, ArrowLeft } from "lucide-react";
+import { Camera, Upload, Sparkles, ArrowLeft, ChevronLeft, ChevronRight, Trash2, UserPlus } from "lucide-react";
 import { scanSchedule, applyScan, type ScanResult } from "@/lib/scan.functions";
-import { listEmployees } from "@/lib/employees.functions";
+import { listEmployees, createEmployee } from "@/lib/employees.functions";
 import { listSectors } from "@/lib/sectors.functions";
 import { mondayOf, addDays, todayISO, WEEKDAY_MAP_PT, WEEKDAY_FULL } from "@/lib/date-utils";
 
