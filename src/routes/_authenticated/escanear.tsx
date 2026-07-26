@@ -22,7 +22,7 @@ function ScanPage() {
   const [step, setStep] = useState<"pick" | "processing" | "review">("pick");
   const [preview, setPreview] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
-  const [weekStart] = useState(mondayOf(todayISO()));
+  const [weekStart, setWeekStart] = useState(mondayOf(todayISO()));
   const [sectorId, setSectorId] = useState<string>("");
   const [mapping, setMapping] = useState<Record<number, string>>({}); // scanned employee index -> real employee id
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -34,8 +34,30 @@ function ScanPage() {
   const applyFn = useServerFn(applyScan);
   const empsFn = useServerFn(listEmployees);
   const sectorsFn = useServerFn(listSectors);
+  const createEmpFn = useServerFn(createEmployee);
   const employees = useQuery({ queryKey: ["employees"], queryFn: () => empsFn() });
   const sectors = useQuery({ queryKey: ["sectors"], queryFn: () => sectorsFn() });
+
+  // Create a registered employee straight from a scanned name and auto-map it.
+  const createEmpM = useMutation({
+    mutationFn: (v: { index: number; name: string }) =>
+      createEmpFn({
+        data: {
+          name: v.name,
+          role_profile: "clt_regular",
+          entry_time: "08:00",
+          journey_hours: 8,
+          sector_id: sectorId || null,
+        },
+      }).then((row) => ({ row, index: v.index })),
+    onSuccess: ({ row, index }) => {
+      setMapping((prev) => ({ ...prev, [index]: row.id }));
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      toast.success("Colaborador cadastrado");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao cadastrar"),
+  });
+
 
   const scanM = useMutation({
     mutationFn: (data_url: string) => scanFn({ data: { image_data_url: data_url } }),
