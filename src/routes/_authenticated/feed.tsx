@@ -132,10 +132,11 @@ function FeedPage() {
       </div>
 
       {/* KPIs */}
-      <div className="px-4 flex gap-2 mb-4">
+      <div className="px-4 grid grid-cols-4 gap-2 mb-4">
         <Kpi label="Ativos" value={active} />
         <Kpi label="Faltas" value={absences} accent="destructive" />
         <Kpi label="Extras" value={extras} accent="warning" />
+        <Kpi label="CLT" value={cltIssues} accent={cltIssues ? "destructive" : undefined} />
       </div>
 
       {/* Alerts */}
