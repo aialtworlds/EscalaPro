@@ -127,3 +127,13 @@ a[aria-label*="Lovable" i][target="_blank"] {
     -webkit-font-smoothing: antialiased;
   }
 }
+
+/* Print layout: clean weekly schedule sheet for PDF export */
+@media print {
+  nav, header, button { display: none !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .max-w-\[440px\] { max-width: none !important; padding-bottom: 0 !important; }
+  table { width: 100% !important; font-size: 11px !important; }
+  th, td { border: 1px solid #999 !important; color: #000 !important; }
+  .overflow-x-auto { overflow: visible !important; }
+}
