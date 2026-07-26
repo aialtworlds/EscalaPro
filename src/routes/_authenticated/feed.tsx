@@ -472,10 +472,11 @@ function FreelancerSheet({
 }
 
 function EditShiftDialog({
-  shift, sectors, onOpenChange, onSaved,
+  shift, sectors, check, onOpenChange, onSaved,
 }: {
   shift: any | null;
   sectors: any[];
+  check: (shift: any, overrides?: Partial<any>) => Violation[];
   onOpenChange: (o: boolean) => void;
   onSaved: () => void;
 }) {
