@@ -10,10 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, AlertTriangle, Clock } from "lucide-react";
+import { Plus, AlertTriangle, Clock, Trash2, RotateCcw, Rocket, Bell, Info } from "lucide-react";
 import { listSectors } from "@/lib/sectors.functions";
-import { listShiftsByDay, createShift, updateShiftBlock, markShiftAbsent } from "@/lib/shifts.functions";
+import { listEmployees } from "@/lib/employees.functions";
+import { listShiftsByDay, createShift, updateShift, markShiftAbsent, deleteShift, clearAbsence } from "@/lib/shifts.functions";
 import { todayISO, trimTime, formatDatePt, ROLE_LABELS } from "@/lib/date-utils";
+import { computeAlerts } from "@/lib/alerts";
+import { OnboardingWizard } from "@/components/OnboardingWizard";
 
 export const Route = createFileRoute("/_authenticated/feed")({
   head: () => ({ meta: [{ title: "Feed Diário — EscalaPro OS" }, { name: "description", content: "Escala do dia com KPIs e ações rápidas." }] }),
@@ -32,12 +35,16 @@ function FeedPage() {
   const [freelancerOpen, setFreelancerOpen] = useState(false);
   const [adjustShift, setAdjustShift] = useState<any | null>(null);
   const [absentShift, setAbsentShift] = useState<any | null>(null);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [showAlerts, setShowAlerts] = useState(true);
 
   const qc = useQueryClient();
   const sectorsFn = useServerFn(listSectors);
   const shiftsFn = useServerFn(listShiftsByDay);
+  const empsFn = useServerFn(listEmployees);
 
   const sectors = useQuery({ queryKey: ["sectors"], queryFn: () => sectorsFn() });
+  const employees = useQuery({ queryKey: ["employees"], queryFn: () => empsFn() });
   const shifts = useQuery({
     queryKey: ["shifts", "day", date, sectorId],
     queryFn: () => shiftsFn({ data: { date, sector_id: sectorId } }),
@@ -46,6 +53,23 @@ function FeedPage() {
   const active = shifts.data?.filter((s) => s.status === "scheduled").length ?? 0;
   const absences = shifts.data?.filter((s) => s.status === "absent").length ?? 0;
   const extras = shifts.data?.filter((s) => s.is_freelancer || s.is_extra).length ?? 0;
+
+  const isEmptyWorkspace =
+    sectors.isSuccess && employees.isSuccess && !sectors.data?.length && !employees.data?.length;
+
+  const alerts =
+    shifts.data && employees.data && sectors.data
+      ? computeAlerts(
+          shifts.data as any,
+          (sectorId ? employees.data.filter((e) => e.sector_id === sectorId) : employees.data) as any,
+          (sectorId ? sectors.data.filter((s) => s.id === sectorId) : sectors.data) as any,
+        )
+      : [];
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["shifts"] });
+    qc.invalidateQueries({ queryKey: ["activity"] });
+  };
 
   return (
     <AppShell>
@@ -60,6 +84,21 @@ function FeedPage() {
         )}
       </div>
 
+      {/* Onboarding */}
+      {isEmptyWorkspace && (
+        <div className="mx-4 mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="flex items-center gap-2 text-sm font-bold">
+            <Rocket className="size-4 text-primary" /> Comece em 30 segundos
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Crie seus setores e os primeiros colaboradores para liberar o feed, a planilha semanal e o scanner.
+          </p>
+          <Button className="w-full mt-3 font-bold tracking-wide" onClick={() => setOnboardingOpen(true)}>
+            CONFIGURAR OPERAÇÃO
+          </Button>
+        </div>
+      )}
+
       {/* Date banner */}
       <div className="px-4 pt-4 pb-2">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Escala do Dia</p>
@@ -72,6 +111,47 @@ function FeedPage() {
         <Kpi label="Faltas" value={absences} accent="destructive" />
         <Kpi label="Extras" value={extras} accent="warning" />
       </div>
+
+      {/* Alerts */}
+      {alerts.length > 0 && (
+        <div className="px-4 mb-4">
+          <button
+            onClick={() => setShowAlerts((v) => !v)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-warning/40 bg-warning/10"
+          >
+            <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+              <Bell className="size-3.5" /> {alerts.length} alerta{alerts.length > 1 ? "s" : ""}
+            </span>
+            <span className="text-[10px] text-muted-foreground">{showAlerts ? "ocultar" : "ver"}</span>
+          </button>
+          {showAlerts && (
+            <div className="mt-2 space-y-2">
+              {alerts.map((a) => (
+                <div
+                  key={a.id}
+                  className={`rounded-lg border p-2.5 flex gap-2 ${
+                    a.level === "critical"
+                      ? "border-destructive/40 bg-destructive/5"
+                      : a.level === "warning"
+                        ? "border-warning/40 bg-warning/5"
+                        : "border-border bg-card"
+                  }`}
+                >
+                  {a.level === "info" ? (
+                    <Info className="size-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <AlertTriangle className={`size-3.5 mt-0.5 shrink-0 ${a.level === "critical" ? "text-destructive" : "text-warning"}`} />
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold">{a.title}</p>
+                    <p className="text-[11px] text-muted-foreground">{a.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Roster */}
       <div className="px-4 space-y-3">
@@ -89,6 +169,7 @@ function FeedPage() {
             shift={s}
             onAbsent={() => setAbsentShift(s)}
             onAdjust={() => setAdjustShift(s)}
+            onChanged={invalidate}
           />
         ))}
       </div>
@@ -102,27 +183,30 @@ function FeedPage() {
         <span className="text-xs font-bold uppercase tracking-tight">Freelancer</span>
       </button>
 
+      <OnboardingWizard open={onboardingOpen} onOpenChange={setOnboardingOpen} />
       <FreelancerSheet
         open={freelancerOpen}
         onOpenChange={setFreelancerOpen}
         date={date}
         sectorId={sectorId}
         sectors={sectors.data ?? []}
-        onCreated={() => qc.invalidateQueries({ queryKey: ["shifts"] })}
+        onCreated={invalidate}
       />
-      <AdjustBlockDialog
+      <EditShiftDialog
         shift={adjustShift}
+        sectors={sectors.data ?? []}
         onOpenChange={(o) => !o && setAdjustShift(null)}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["shifts"] })}
+        onSaved={invalidate}
       />
       <AbsenceDialog
         shift={absentShift}
         onOpenChange={(o) => !o && setAbsentShift(null)}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["shifts"] })}
+        onSaved={invalidate}
       />
     </AppShell>
   );
 }
+
 
 function SectorChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
@@ -150,7 +234,7 @@ function Kpi({ label, value, accent }: { label: string; value: number; accent?: 
   );
 }
 
-function ShiftCard({ shift, onAbsent, onAdjust }: { shift: any; onAbsent: () => void; onAdjust: () => void }) {
+function ShiftCard({ shift, onAbsent, onAdjust }: { shift: any; onAbsent: () => void; onAdjust: () => void; onChanged?: () => void }) {
   const isAbsent = shift.status === "absent";
   const name = shift.employees?.name ?? shift.freelancer_label ?? "Freelancer";
   const role = shift.is_freelancer ? "Freelancer" : ROLE_LABELS[shift.employees?.role_profile] ?? "";
@@ -173,8 +257,16 @@ function ShiftCard({ shift, onAbsent, onAdjust }: { shift: any; onAbsent: () => 
         </span>
       </div>
       {isAbsent ? (
-        <div className="flex items-center gap-1.5 text-xs font-bold text-destructive pt-1 border-t border-destructive/20">
-          <AlertTriangle className="size-3.5" /> FALTA REGISTRADA
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-destructive/20">
+          <span className="flex items-center gap-1.5 text-xs font-bold text-destructive">
+            <AlertTriangle className="size-3.5" /> FALTA REGISTRADA
+          </span>
+          <button
+            onClick={onAdjust}
+            className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-secondary text-foreground rounded border border-border active:scale-95 transition"
+          >
+            Editar
+          </button>
         </div>
       ) : (
         <div className="flex gap-2 border-t border-border pt-3">
@@ -316,46 +408,127 @@ function FreelancerSheet({
   );
 }
 
-function AdjustBlockDialog({ shift, onOpenChange, onSaved }: { shift: any | null; onOpenChange: (o: boolean) => void; onSaved: () => void }) {
+function EditShiftDialog({
+  shift, sectors, onOpenChange, onSaved,
+}: {
+  shift: any | null;
+  sectors: any[];
+  onOpenChange: (o: boolean) => void;
+  onSaved: () => void;
+}) {
   const [start, setStart] = useState("08:00");
   const [end, setEnd] = useState("16:00");
-  const fn = useServerFn(updateShiftBlock);
-  const m = useMutation({
-    mutationFn: () => fn({ data: { id: shift.id, start_time: start, end_time: end } }),
-    onSuccess: () => { toast.success("Turno ajustado"); onSaved(); onOpenChange(false); },
+  const [sector, setSector] = useState<string>("");
+  const [label, setLabel] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const updateFn = useServerFn(updateShift);
+  const deleteFn = useServerFn(deleteShift);
+  const clearFn = useServerFn(clearAbsence);
+
+  const save = useMutation({
+    mutationFn: () =>
+      updateFn({
+        data: {
+          id: shift.id,
+          start_time: start,
+          end_time: end,
+          sector_id: sector || null,
+          freelancer_label: shift.is_freelancer ? label || null : undefined,
+        },
+      }),
+    onSuccess: () => { toast.success("Turno atualizado"); onSaved(); onOpenChange(false); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
+  });
+
+  const remove = useMutation({
+    mutationFn: () => deleteFn({ data: { id: shift.id } }),
+    onSuccess: () => { toast.success("Turno excluído"); onSaved(); onOpenChange(false); setConfirmDelete(false); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
+  });
+
+  const revert = useMutation({
+    mutationFn: () => clearFn({ data: { id: shift.id } }),
+    onSuccess: () => { toast.success("Falta desfeita"); onSaved(); onOpenChange(false); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
   });
 
   return (
     <Dialog
       open={!!shift}
-      onOpenChange={(o) => {
-        if (!o) onOpenChange(false);
-        else if (shift) { setStart(trimTime(shift.start_time)); setEnd(trimTime(shift.end_time)); }
+      onOpenChange={(o: boolean) => {
+        if (!o) { onOpenChange(false); setConfirmDelete(false); }
+        else if (shift) {
+          setStart(trimTime(shift.start_time));
+          setEnd(trimTime(shift.end_time));
+          setSector(shift.sector_id ?? "");
+          setLabel(shift.freelancer_label ?? "");
+        }
       }}
     >
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Ajustar Bloco</DialogTitle>
+          <DialogTitle>Editar Turno</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs">Entrada</Label>
-            <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="font-mono" />
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Entrada</Label>
+              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="font-mono" />
+            </div>
+            <div>
+              <Label className="text-xs">Saída</Label>
+              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="font-mono" />
+            </div>
           </div>
           <div>
-            <Label className="text-xs">Saída</Label>
-            <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="font-mono" />
+            <Label className="text-xs">Setor</Label>
+            <Select value={sector} onValueChange={setSector}>
+              <SelectTrigger><SelectValue placeholder="Sem setor" /></SelectTrigger>
+              <SelectContent>
+                {sectors.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
+          {shift?.is_freelancer && (
+            <div>
+              <Label className="text-xs">Rótulo</Label>
+              <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex: João Freelancer" />
+            </div>
+          )}
+          {shift?.status === "absent" && (
+            <Button variant="outline" className="w-full" disabled={revert.isPending} onClick={() => revert.mutate()}>
+              <RotateCcw className="size-4 mr-1" /> Desfazer falta
+            </Button>
+          )}
+          {confirmDelete ? (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+              <p className="text-xs">Excluir este turno permanentemente?</p>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setConfirmDelete(false)}>Cancelar</Button>
+                <Button variant="destructive" className="flex-1" disabled={remove.isPending} onClick={() => remove.mutate()}>
+                  Excluir
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="w-full py-2 text-[11px] font-bold uppercase tracking-wider text-destructive flex items-center justify-center gap-1"
+            >
+              <Trash2 className="size-3.5" /> Excluir turno
+            </button>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => m.mutate()} disabled={m.isPending}>Confirmar</Button>
+          <Button onClick={() => save.mutate()} disabled={save.isPending}>Salvar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
 
 function AbsenceDialog({ shift, onOpenChange, onSaved }: { shift: any | null; onOpenChange: (o: boolean) => void; onSaved: () => void }) {
   const [reason, setReason] = useState("");

@@ -1,13 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { listShiftsByWeek } from "@/lib/shifts.functions";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { listShiftsByWeek, duplicateWeek } from "@/lib/shifts.functions";
 import { listEmployees } from "@/lib/employees.functions";
 import { mondayOf, addDays, todayISO, WEEKDAY_LABELS, trimTime } from "@/lib/date-utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Download, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/semana")({
   head: () => ({ meta: [{ title: "Planilha Semanal — EscalaPro OS" }, { name: "description", content: "Matriz semanal de escala." }] }),
@@ -16,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/semana")({
 
 function SemanaPage() {
   const [weekStart, setWeekStart] = useState(mondayOf(todayISO()));
+  const [dupOpen, setDupOpen] = useState(false);
   const shiftsFn = useServerFn(listShiftsByWeek);
   const empsFn = useServerFn(listEmployees);
   const shifts = useQuery({ queryKey: ["shifts", "week", weekStart], queryFn: () => shiftsFn({ data: { week_start: weekStart } }) });
@@ -24,22 +29,66 @@ function SemanaPage() {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const weekLabel = `${weekStart.slice(8, 10)}/${weekStart.slice(5, 7)} — ${days[6].slice(8, 10)}/${days[6].slice(5, 7)}`;
 
+  function exportCsv() {
+    const header = ["Colaborador", ...days.map((d, i) => `${WEEKDAY_LABELS[(i + 1) % 7]} ${d.slice(8, 10)}/${d.slice(5, 7)}`)];
+    const rows = (employees.data ?? []).map((emp) => [
+      emp.name,
+      ...days.map((d) => {
+        const s = shifts.data?.find((x) => x.employee_id === emp.id && x.shift_date === d);
+        if (!s) return "";
+        if (s.status === "absent") return "FALTA";
+        return `${trimTime(s.start_time)}-${trimTime(s.end_time)}`;
+      }),
+    ]);
+    const freelas = days.map((d) =>
+      (shifts.data ?? [])
+        .filter((x) => !x.employee_id && x.shift_date === d)
+        .map((x) => `${x.freelancer_label ?? "Freelancer"} ${trimTime(x.start_time)}-${trimTime(x.end_time)}`)
+        .join(" | "),
+    );
+    if (freelas.some(Boolean)) rows.push(["Freelancers", ...freelas]);
+
+    const csv = [header, ...rows]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";"))
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `escala-${weekStart}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV exportado");
+  }
+
   return (
     <AppShell>
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 pt-4 pb-2 print:pt-0">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Planilha Semanal</p>
         <div className="flex items-center justify-between mt-1">
           <h1 className="text-lg font-bold font-mono">{weekLabel}</h1>
-          <div className="flex gap-1">
-            <Button size="icon" variant="outline" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+          <div className="flex gap-1 print:hidden">
+            <Button size="icon" variant="outline" onClick={() => setWeekStart(addDays(weekStart, -7))} aria-label="Semana anterior">
               <ChevronLeft className="size-4" />
             </Button>
-            <Button size="icon" variant="outline" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+            <Button size="icon" variant="outline" onClick={() => setWeekStart(addDays(weekStart, 7))} aria-label="Próxima semana">
               <ChevronRight className="size-4" />
             </Button>
           </div>
         </div>
+        <div className="flex gap-2 mt-3 print:hidden">
+          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => setDupOpen(true)}>
+            <Copy className="size-3.5 mr-1" /> Duplicar
+          </Button>
+          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={exportCsv}>
+            <Download className="size-3.5 mr-1" /> CSV
+          </Button>
+          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => window.print()}>
+            <Printer className="size-3.5 mr-1" /> PDF
+          </Button>
+        </div>
       </div>
+
 
       <div className="px-4">
         <div className="overflow-x-auto border border-border rounded-lg bg-card">
@@ -118,6 +167,80 @@ function SemanaPage() {
           <span className="flex items-center gap-1"><span className="size-3 bg-warning/20 rounded" /> Freelancer</span>
         </div>
       </div>
+
+      <DuplicateWeekDialog open={dupOpen} onOpenChange={setDupOpen} weekStart={weekStart} />
     </AppShell>
   );
 }
+
+function DuplicateWeekDialog({
+  open, onOpenChange, weekStart,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  weekStart: string;
+}) {
+  const [target, setTarget] = useState(addDays(weekStart, 7));
+  const [includeFreelancers, setIncludeFreelancers] = useState(false);
+  const [overwrite, setOverwrite] = useState(false);
+  const qc = useQueryClient();
+  const fn = useServerFn(duplicateWeek);
+  const m = useMutation({
+    mutationFn: () =>
+      fn({ data: { from_week: weekStart, to_week: target, include_freelancers: includeFreelancers, overwrite } }),
+    onSuccess: (r) => {
+      toast.success(`${r.inserted} turnos copiados`);
+      qc.invalidateQueries({ queryKey: ["shifts"] });
+      onOpenChange(false);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
+  });
+
+  const targetLabel = `${target.slice(8, 10)}/${target.slice(5, 7)} — ${addDays(target, 6).slice(8, 10)}/${addDays(target, 6).slice(5, 7)}`;
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        onOpenChange(o);
+        if (o) { setTarget(addDays(weekStart, 7)); setOverwrite(false); }
+      }}
+    >
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Duplicar Semana</DialogTitle>
+          <DialogDescription>Copia todos os turnos desta semana para outra.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label className="text-xs">Semana de destino</Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Button size="icon" variant="outline" onClick={() => setTarget(addDays(target, -7))} aria-label="Anterior">
+                <ChevronLeft className="size-4" />
+              </Button>
+              <span className="flex-1 text-center font-mono text-sm font-bold">{targetLabel}</span>
+              <Button size="icon" variant="outline" onClick={() => setTarget(addDays(target, 7))} aria-label="Próxima">
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-xs">
+            <Checkbox checked={includeFreelancers} onCheckedChange={(v) => setIncludeFreelancers(v === true)} />
+            Incluir freelancers
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <Checkbox checked={overwrite} onCheckedChange={(v) => setOverwrite(v === true)} />
+            Substituir turnos existentes no destino
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button disabled={m.isPending || target === weekStart} onClick={() => m.mutate()}>
+            {m.isPending ? "Copiando..." : "Duplicar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

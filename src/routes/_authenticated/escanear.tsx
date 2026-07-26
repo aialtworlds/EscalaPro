@@ -5,10 +5,11 @@ import { toast } from "sonner";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, Upload, Sparkles, ArrowLeft } from "lucide-react";
+import { Camera, Upload, Sparkles, ArrowLeft, ChevronLeft, ChevronRight, Trash2, UserPlus } from "lucide-react";
 import { scanSchedule, applyScan, type ScanResult } from "@/lib/scan.functions";
-import { listEmployees } from "@/lib/employees.functions";
+import { listEmployees, createEmployee } from "@/lib/employees.functions";
 import { listSectors } from "@/lib/sectors.functions";
 import { mondayOf, addDays, todayISO, WEEKDAY_MAP_PT, WEEKDAY_FULL } from "@/lib/date-utils";
 
@@ -21,7 +22,7 @@ function ScanPage() {
   const [step, setStep] = useState<"pick" | "processing" | "review">("pick");
   const [preview, setPreview] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
-  const [weekStart] = useState(mondayOf(todayISO()));
+  const [weekStart, setWeekStart] = useState(mondayOf(todayISO()));
   const [sectorId, setSectorId] = useState<string>("");
   const [mapping, setMapping] = useState<Record<number, string>>({}); // scanned employee index -> real employee id
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -33,8 +34,30 @@ function ScanPage() {
   const applyFn = useServerFn(applyScan);
   const empsFn = useServerFn(listEmployees);
   const sectorsFn = useServerFn(listSectors);
+  const createEmpFn = useServerFn(createEmployee);
   const employees = useQuery({ queryKey: ["employees"], queryFn: () => empsFn() });
   const sectors = useQuery({ queryKey: ["sectors"], queryFn: () => sectorsFn() });
+
+  // Create a registered employee straight from a scanned name and auto-map it.
+  const createEmpM = useMutation({
+    mutationFn: (v: { index: number; name: string }) =>
+      createEmpFn({
+        data: {
+          name: v.name,
+          role_profile: "clt_regular",
+          entry_time: "08:00",
+          journey_hours: 8,
+          sector_id: sectorId || null,
+        },
+      }).then((row) => ({ row, index: v.index })),
+    onSuccess: ({ row, index }) => {
+      setMapping((prev) => ({ ...prev, [index]: row.id }));
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      toast.success("Colaborador cadastrado");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao cadastrar"),
+  });
+
 
   const scanM = useMutation({
     mutationFn: (data_url: string) => scanFn({ data: { image_data_url: data_url } }),
@@ -158,7 +181,26 @@ function ScanPage() {
       {step === "review" && result && (
         <div className="px-4 space-y-4">
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-xs">
-            Revise o mapeamento antes de gravar. Semana: <span className="font-mono font-bold">{weekStart}</span>
+            Revise e corrija antes de gravar. Tudo abaixo é editável.
+          </div>
+
+          {preview && (
+            <img src={preview} alt="Escala escaneada" className="w-full max-h-40 object-contain rounded-lg border border-border" />
+          )}
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Semana destino</label>
+            <div className="flex items-center gap-2 mt-1">
+              <Button size="icon" variant="outline" onClick={() => setWeekStart(addDays(weekStart, -7))} aria-label="Semana anterior">
+                <ChevronLeft className="size-4" />
+              </Button>
+              <span className="flex-1 text-center font-mono text-sm font-bold">
+                {weekStart.slice(8, 10)}/{weekStart.slice(5, 7)} — {addDays(weekStart, 6).slice(8, 10)}/{addDays(weekStart, 6).slice(5, 7)}
+              </span>
+              <Button size="icon" variant="outline" onClick={() => setWeekStart(addDays(weekStart, 7))} aria-label="Próxima semana">
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
           </div>
 
           <div>
@@ -175,25 +217,85 @@ function ScanPage() {
             {result.employees.map((emp, i) => (
               <div key={i} className="bg-card border border-border rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-bold text-sm">{emp.name}</p>
+                  <p className="font-bold text-sm truncate">{emp.name}</p>
+                  <button
+                    onClick={() => {
+                      setResult({ employees: result.employees.filter((_, k) => k !== i) });
+                      const next: Record<number, string> = {};
+                      Object.entries(mapping).forEach(([k, v]) => {
+                        const n = Number(k);
+                        if (n < i) next[n] = v;
+                        else if (n > i) next[n - 1] = v;
+                      });
+                      setMapping(next);
+                    }}
+                    className="text-[10px] font-bold uppercase text-destructive"
+                  >
+                    Descartar
+                  </button>
                 </div>
-                <Select value={mapping[i] ?? ""} onValueChange={(v) => setMapping({ ...mapping, [i]: v })}>
-                  <SelectTrigger><SelectValue placeholder="Mapear para colaborador cadastrado" /></SelectTrigger>
-                  <SelectContent>
-                    {employees.data?.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <div className="flex flex-wrap gap-1.5 pt-1">
+                <div className="flex gap-2">
+                  <Select value={mapping[i] ?? ""} onValueChange={(v) => setMapping({ ...mapping, [i]: v })}>
+                    <SelectTrigger><SelectValue placeholder="Mapear para colaborador cadastrado" /></SelectTrigger>
+                    <SelectContent>
+                      {employees.data?.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {!mapping[i] && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 text-xs"
+                      disabled={createEmpM.isPending}
+                      onClick={() => createEmpM.mutate({ index: i, name: emp.name })}
+                    >
+                      <UserPlus className="size-3.5 mr-1" /> Criar
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-1.5 pt-1">
                   {emp.shifts.map((s, j) => {
                     const idx = WEEKDAY_MAP_PT[s.weekday.trim().toLowerCase()];
                     const label = idx !== undefined ? WEEKDAY_FULL[idx].slice(0, 3) : s.weekday.slice(0, 3);
-                    const hasTime = s.start_time && s.end_time;
+                    const patch = (field: "start_time" | "end_time", value: string) => {
+                      const employeesCopy = result.employees.map((e, k) =>
+                        k !== i ? e : { ...e, shifts: e.shifts.map((sh, l) => (l === j ? { ...sh, [field]: value } : sh)) },
+                      );
+                      setResult({ employees: employeesCopy });
+                    };
                     return (
-                      <span key={j} className={`text-[10px] font-mono px-2 py-0.5 rounded border ${hasTime ? "bg-primary/10 text-primary border-primary/20" : "bg-secondary text-muted-foreground border-border"}`}>
-                        {label} {hasTime ? `${normalizeTime(s.start_time)}—${normalizeTime(s.end_time)}` : "folga"}
-                      </span>
+                      <div key={j} className="flex items-center gap-2">
+                        <span className="w-9 text-[10px] font-bold uppercase text-muted-foreground">{label}</span>
+                        <Input
+                          type="time"
+                          value={s.start_time ? normalizeTime(s.start_time) : ""}
+                          onChange={(e) => patch("start_time", e.target.value)}
+                          className="h-8 font-mono text-xs px-2"
+                        />
+                        <Input
+                          type="time"
+                          value={s.end_time ? normalizeTime(s.end_time) : ""}
+                          onChange={(e) => patch("end_time", e.target.value)}
+                          className="h-8 font-mono text-xs px-2"
+                        />
+                        <button
+                          onClick={() =>
+                            setResult({
+                              employees: result.employees.map((e, k) =>
+                                k !== i ? e : { ...e, shifts: e.shifts.filter((_, l) => l !== j) },
+                              ),
+                            })
+                          }
+                          aria-label="Remover turno"
+                          className="p-1 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
                     );
                   })}
+                  {!emp.shifts.length && <p className="text-[11px] text-muted-foreground">Nenhum turno detectado.</p>}
                 </div>
               </div>
             ))}
@@ -208,6 +310,7 @@ function ScanPage() {
           </Button>
         </div>
       )}
+
     </AppShell>
   );
 }
