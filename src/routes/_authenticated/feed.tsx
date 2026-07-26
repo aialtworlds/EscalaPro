@@ -234,7 +234,7 @@ function Kpi({ label, value, accent }: { label: string; value: number; accent?: 
   );
 }
 
-function ShiftCard({ shift, onAbsent, onAdjust }: { shift: any; onAbsent: () => void; onAdjust: () => void }) {
+function ShiftCard({ shift, onAbsent, onAdjust }: { shift: any; onAbsent: () => void; onAdjust: () => void; onChanged?: () => void }) {
   const isAbsent = shift.status === "absent";
   const name = shift.employees?.name ?? shift.freelancer_label ?? "Freelancer";
   const role = shift.is_freelancer ? "Freelancer" : ROLE_LABELS[shift.employees?.role_profile] ?? "";
