@@ -10,12 +10,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, AlertTriangle, Clock, Trash2, RotateCcw, Rocket, Bell, Info } from "lucide-react";
+import { Plus, AlertTriangle, Clock, Trash2, RotateCcw, Rocket, Bell, Info, Sparkles } from "lucide-react";
 import { listSectors } from "@/lib/sectors.functions";
 import { listEmployees } from "@/lib/employees.functions";
-import { listShiftsByDay, createShift, updateShift, markShiftAbsent, deleteShift, clearAbsence } from "@/lib/shifts.functions";
-import { todayISO, trimTime, formatDatePt, ROLE_LABELS } from "@/lib/date-utils";
+import { listShiftsByDay, listShiftsByWeek, createShift, updateShift, markShiftAbsent, deleteShift, clearAbsence } from "@/lib/shifts.functions";
+import { todayISO, trimTime, formatDatePt, ROLE_LABELS, mondayOf } from "@/lib/date-utils";
 import { computeAlerts } from "@/lib/alerts";
+import { checkShiftCompliance } from "@/lib/clt-rules";
+import type { Violation } from "@/lib/clt-rules";
+import { CltBadge, CltPanel } from "@/components/CltBadge";
+import { CoverageSheet } from "@/components/CoverageSheet";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 
 export const Route = createFileRoute("/_authenticated/feed")({
@@ -35,19 +39,26 @@ function FeedPage() {
   const [freelancerOpen, setFreelancerOpen] = useState(false);
   const [adjustShift, setAdjustShift] = useState<any | null>(null);
   const [absentShift, setAbsentShift] = useState<any | null>(null);
+  const [coverShift, setCoverShift] = useState<any | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [showAlerts, setShowAlerts] = useState(true);
 
   const qc = useQueryClient();
   const sectorsFn = useServerFn(listSectors);
   const shiftsFn = useServerFn(listShiftsByDay);
+  const weekFn = useServerFn(listShiftsByWeek);
   const empsFn = useServerFn(listEmployees);
 
+  const weekStart = mondayOf(date);
   const sectors = useQuery({ queryKey: ["sectors"], queryFn: () => sectorsFn() });
   const employees = useQuery({ queryKey: ["employees"], queryFn: () => empsFn() });
   const shifts = useQuery({
     queryKey: ["shifts", "day", date, sectorId],
     queryFn: () => shiftsFn({ data: { date, sector_id: sectorId } }),
+  });
+  const weekShifts = useQuery({
+    queryKey: ["shifts", "week", weekStart],
+    queryFn: () => weekFn({ data: { week_start: weekStart } }),
   });
 
   const active = shifts.data?.filter((s) => s.status === "scheduled").length ?? 0;
@@ -56,6 +67,20 @@ function FeedPage() {
 
   const isEmptyWorkspace =
     sectors.isSuccess && employees.isSuccess && !sectors.data?.length && !employees.data?.length;
+
+  // Motor CLT: avalia cada turno do dia contra a semana inteira do colaborador.
+  const complianceOf = (shift: any, overrides?: Partial<any>): Violation[] => {
+    const emp = employees.data?.find((e) => e.id === shift.employee_id);
+    if (!emp || !weekShifts.data) return [];
+    const others = (weekShifts.data as any[]).filter((s) => s.id !== shift.id);
+    return checkShiftCompliance({ ...shift, ...overrides } as any, emp as any, others as any);
+  };
+
+  const violationsById = new Map<string, Violation[]>();
+  for (const s of (shifts.data ?? []) as any[]) {
+    if (s.status !== "absent") violationsById.set(s.id, complianceOf(s));
+  }
+  const cltIssues = [...violationsById.values()].filter((v) => v.some((x) => x.level === "error")).length;
 
   const alerts =
     shifts.data && employees.data && sectors.data
@@ -70,6 +95,7 @@ function FeedPage() {
     qc.invalidateQueries({ queryKey: ["shifts"] });
     qc.invalidateQueries({ queryKey: ["activity"] });
   };
+
 
   return (
     <AppShell>
@@ -106,10 +132,11 @@ function FeedPage() {
       </div>
 
       {/* KPIs */}
-      <div className="px-4 flex gap-2 mb-4">
+      <div className="px-4 grid grid-cols-4 gap-2 mb-4">
         <Kpi label="Ativos" value={active} />
         <Kpi label="Faltas" value={absences} accent="destructive" />
         <Kpi label="Extras" value={extras} accent="warning" />
+        <Kpi label="CLT" value={cltIssues} accent={cltIssues ? "destructive" : undefined} />
       </div>
 
       {/* Alerts */}
@@ -167,8 +194,10 @@ function FeedPage() {
           <ShiftCard
             key={s.id}
             shift={s}
+            violations={violationsById.get(s.id) ?? []}
             onAbsent={() => setAbsentShift(s)}
             onAdjust={() => setAdjustShift(s)}
+            onCover={() => setCoverShift(s)}
             onChanged={invalidate}
           />
         ))}
@@ -192,12 +221,15 @@ function FeedPage() {
         sectors={sectors.data ?? []}
         onCreated={invalidate}
       />
+      <CoverageSheet shift={coverShift} onOpenChange={(o) => !o && setCoverShift(null)} onAllocated={invalidate} />
       <EditShiftDialog
         shift={adjustShift}
         sectors={sectors.data ?? []}
+        check={complianceOf}
         onOpenChange={(o) => !o && setAdjustShift(null)}
         onSaved={invalidate}
       />
+
       <AbsenceDialog
         shift={absentShift}
         onOpenChange={(o) => !o && setAbsentShift(null)}
@@ -234,10 +266,20 @@ function Kpi({ label, value, accent }: { label: string; value: number; accent?: 
   );
 }
 
-function ShiftCard({ shift, onAbsent, onAdjust }: { shift: any; onAbsent: () => void; onAdjust: () => void; onChanged?: () => void }) {
+function ShiftCard({
+  shift, violations = [], onAbsent, onAdjust, onCover,
+}: {
+  shift: any;
+  violations?: Violation[];
+  onAbsent: () => void;
+  onAdjust: () => void;
+  onCover: () => void;
+  onChanged?: () => void;
+}) {
   const isAbsent = shift.status === "absent";
   const name = shift.employees?.name ?? shift.freelancer_label ?? "Freelancer";
   const role = shift.is_freelancer ? "Freelancer" : ROLE_LABELS[shift.employees?.role_profile] ?? "";
+  const [showClt, setShowClt] = useState(false);
   return (
     <div
       className={`animate-fade-in bg-card border rounded-xl p-3 flex flex-col gap-3 shadow-sm ${
@@ -256,19 +298,41 @@ function ShiftCard({ shift, onAbsent, onAdjust }: { shift: any; onAbsent: () => 
           {trimTime(shift.start_time)} — {trimTime(shift.end_time)}
         </span>
       </div>
+
+      {violations.length > 0 && !isAbsent && (
+        <div>
+          <button onClick={() => setShowClt((v) => !v)} className="flex items-center gap-1.5">
+            <CltBadge violations={violations} />
+            <span className="text-[10px] text-muted-foreground">
+              {violations.length} ponto{violations.length > 1 ? "s" : ""} — {showClt ? "ocultar" : "ver"}
+            </span>
+          </button>
+          {showClt && <div className="mt-2"><CltPanel violations={violations} /></div>}
+        </div>
+      )}
+
       {isAbsent ? (
-        <div className="flex items-center justify-between gap-2 pt-1 border-t border-destructive/20">
+        <div className="flex flex-col gap-2 pt-1 border-t border-destructive/20">
           <span className="flex items-center gap-1.5 text-xs font-bold text-destructive">
             <AlertTriangle className="size-3.5" /> FALTA REGISTRADA
           </span>
-          <button
-            onClick={onAdjust}
-            className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-secondary text-foreground rounded border border-border active:scale-95 transition"
-          >
-            Editar
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onCover}
+              className="flex-1 py-2 text-[10px] font-bold uppercase tracking-wider bg-primary text-primary-foreground rounded active:scale-95 transition flex items-center justify-center gap-1"
+            >
+              <Sparkles className="size-3" /> Buscar cobertura
+            </button>
+            <button
+              onClick={onAdjust}
+              className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider bg-secondary text-foreground rounded border border-border active:scale-95 transition"
+            >
+              Editar
+            </button>
+          </div>
         </div>
       ) : (
+
         <div className="flex gap-2 border-t border-border pt-3">
           <button
             onClick={onAbsent}
@@ -409,10 +473,11 @@ function FreelancerSheet({
 }
 
 function EditShiftDialog({
-  shift, sectors, onOpenChange, onSaved,
+  shift, sectors, check, onOpenChange, onSaved,
 }: {
   shift: any | null;
   sectors: any[];
+  check: (shift: any, overrides?: Partial<any>) => Violation[];
   onOpenChange: (o: boolean) => void;
   onSaved: () => void;
 }) {
@@ -496,7 +561,14 @@ function EditShiftDialog({
               <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex: João Freelancer" />
             </div>
           )}
+          {shift && shift.status !== "absent" && (
+            <div className="rounded-lg border border-border bg-secondary/40 p-2.5 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Conformidade CLT</p>
+              <CltPanel violations={check(shift, { start_time: start, end_time: end })} />
+            </div>
+          )}
           {shift?.status === "absent" && (
+
             <Button variant="outline" className="w-full" disabled={revert.isPending} onClick={() => revert.mutate()}>
               <RotateCcw className="size-4 mr-1" /> Desfazer falta
             </Button>
