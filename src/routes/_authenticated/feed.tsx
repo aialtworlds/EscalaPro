@@ -265,10 +265,20 @@ function Kpi({ label, value, accent }: { label: string; value: number; accent?: 
   );
 }
 
-function ShiftCard({ shift, onAbsent, onAdjust }: { shift: any; onAbsent: () => void; onAdjust: () => void; onChanged?: () => void }) {
+function ShiftCard({
+  shift, violations = [], onAbsent, onAdjust, onCover,
+}: {
+  shift: any;
+  violations?: Violation[];
+  onAbsent: () => void;
+  onAdjust: () => void;
+  onCover: () => void;
+  onChanged?: () => void;
+}) {
   const isAbsent = shift.status === "absent";
   const name = shift.employees?.name ?? shift.freelancer_label ?? "Freelancer";
   const role = shift.is_freelancer ? "Freelancer" : ROLE_LABELS[shift.employees?.role_profile] ?? "";
+  const [showClt, setShowClt] = useState(false);
   return (
     <div
       className={`animate-fade-in bg-card border rounded-xl p-3 flex flex-col gap-3 shadow-sm ${
@@ -287,19 +297,41 @@ function ShiftCard({ shift, onAbsent, onAdjust }: { shift: any; onAbsent: () => 
           {trimTime(shift.start_time)} — {trimTime(shift.end_time)}
         </span>
       </div>
+
+      {violations.length > 0 && !isAbsent && (
+        <div>
+          <button onClick={() => setShowClt((v) => !v)} className="flex items-center gap-1.5">
+            <CltBadge violations={violations} />
+            <span className="text-[10px] text-muted-foreground">
+              {violations.length} ponto{violations.length > 1 ? "s" : ""} — {showClt ? "ocultar" : "ver"}
+            </span>
+          </button>
+          {showClt && <div className="mt-2"><CltPanel violations={violations} /></div>}
+        </div>
+      )}
+
       {isAbsent ? (
-        <div className="flex items-center justify-between gap-2 pt-1 border-t border-destructive/20">
+        <div className="flex flex-col gap-2 pt-1 border-t border-destructive/20">
           <span className="flex items-center gap-1.5 text-xs font-bold text-destructive">
             <AlertTriangle className="size-3.5" /> FALTA REGISTRADA
           </span>
-          <button
-            onClick={onAdjust}
-            className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-secondary text-foreground rounded border border-border active:scale-95 transition"
-          >
-            Editar
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onCover}
+              className="flex-1 py-2 text-[10px] font-bold uppercase tracking-wider bg-primary text-primary-foreground rounded active:scale-95 transition flex items-center justify-center gap-1"
+            >
+              <Sparkles className="size-3" /> Buscar cobertura
+            </button>
+            <button
+              onClick={onAdjust}
+              className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider bg-secondary text-foreground rounded border border-border active:scale-95 transition"
+            >
+              Editar
+            </button>
+          </div>
         </div>
       ) : (
+
         <div className="flex gap-2 border-t border-border pt-3">
           <button
             onClick={onAbsent}
