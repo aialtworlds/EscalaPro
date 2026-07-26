@@ -257,8 +257,16 @@ function ShiftCard({ shift, onAbsent, onAdjust }: { shift: any; onAbsent: () => 
         </span>
       </div>
       {isAbsent ? (
-        <div className="flex items-center gap-1.5 text-xs font-bold text-destructive pt-1 border-t border-destructive/20">
-          <AlertTriangle className="size-3.5" /> FALTA REGISTRADA
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-destructive/20">
+          <span className="flex items-center gap-1.5 text-xs font-bold text-destructive">
+            <AlertTriangle className="size-3.5" /> FALTA REGISTRADA
+          </span>
+          <button
+            onClick={onAdjust}
+            className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-secondary text-foreground rounded border border-border active:scale-95 transition"
+          >
+            Editar
+          </button>
         </div>
       ) : (
         <div className="flex gap-2 border-t border-border pt-3">
