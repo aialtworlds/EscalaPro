@@ -39,19 +39,26 @@ function FeedPage() {
   const [freelancerOpen, setFreelancerOpen] = useState(false);
   const [adjustShift, setAdjustShift] = useState<any | null>(null);
   const [absentShift, setAbsentShift] = useState<any | null>(null);
+  const [coverShift, setCoverShift] = useState<any | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [showAlerts, setShowAlerts] = useState(true);
 
   const qc = useQueryClient();
   const sectorsFn = useServerFn(listSectors);
   const shiftsFn = useServerFn(listShiftsByDay);
+  const weekFn = useServerFn(listShiftsByWeek);
   const empsFn = useServerFn(listEmployees);
 
+  const weekStart = mondayOf(date);
   const sectors = useQuery({ queryKey: ["sectors"], queryFn: () => sectorsFn() });
   const employees = useQuery({ queryKey: ["employees"], queryFn: () => empsFn() });
   const shifts = useQuery({
     queryKey: ["shifts", "day", date, sectorId],
     queryFn: () => shiftsFn({ data: { date, sector_id: sectorId } }),
+  });
+  const weekShifts = useQuery({
+    queryKey: ["shifts", "week", weekStart],
+    queryFn: () => weekFn({ data: { week_start: weekStart } }),
   });
 
   const active = shifts.data?.filter((s) => s.status === "scheduled").length ?? 0;
@@ -60,6 +67,20 @@ function FeedPage() {
 
   const isEmptyWorkspace =
     sectors.isSuccess && employees.isSuccess && !sectors.data?.length && !employees.data?.length;
+
+  // Motor CLT: avalia cada turno do dia contra a semana inteira do colaborador.
+  const complianceOf = (shift: any, overrides?: Partial<any>): Violation[] => {
+    const emp = employees.data?.find((e) => e.id === shift.employee_id);
+    if (!emp || !weekShifts.data) return [];
+    const others = (weekShifts.data as any[]).filter((s) => s.id !== shift.id);
+    return checkShiftCompliance({ ...shift, ...overrides } as any, emp as any, others as any);
+  };
+
+  const violationsById = new Map<string, Violation[]>();
+  for (const s of (shifts.data ?? []) as any[]) {
+    if (s.status !== "absent") violationsById.set(s.id, complianceOf(s));
+  }
+  const cltIssues = [...violationsById.values()].filter((v) => v.some((x) => x.level === "error")).length;
 
   const alerts =
     shifts.data && employees.data && sectors.data
@@ -74,6 +95,7 @@ function FeedPage() {
     qc.invalidateQueries({ queryKey: ["shifts"] });
     qc.invalidateQueries({ queryKey: ["activity"] });
   };
+
 
   return (
     <AppShell>
