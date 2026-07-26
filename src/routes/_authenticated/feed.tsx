@@ -10,12 +10,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, AlertTriangle, Clock, Trash2, RotateCcw, Rocket, Bell, Info } from "lucide-react";
+import { Plus, AlertTriangle, Clock, Trash2, RotateCcw, Rocket, Bell, Info, Sparkles } from "lucide-react";
 import { listSectors } from "@/lib/sectors.functions";
 import { listEmployees } from "@/lib/employees.functions";
-import { listShiftsByDay, createShift, updateShift, markShiftAbsent, deleteShift, clearAbsence } from "@/lib/shifts.functions";
-import { todayISO, trimTime, formatDatePt, ROLE_LABELS } from "@/lib/date-utils";
+import { listShiftsByDay, listShiftsByWeek, createShift, updateShift, markShiftAbsent, deleteShift, clearAbsence } from "@/lib/shifts.functions";
+import { todayISO, trimTime, formatDatePt, ROLE_LABELS, mondayOf } from "@/lib/date-utils";
 import { computeAlerts } from "@/lib/alerts";
+import { checkShiftCompliance } from "@/lib/clt-rules";
+import type { Violation } from "@/lib/clt-rules";
+import { CltBadge, CltPanel } from "@/components/CltBadge";
+import { CoverageSheet } from "@/components/CoverageSheet";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 
 export const Route = createFileRoute("/_authenticated/feed")({
