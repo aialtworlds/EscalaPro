@@ -10,10 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, AlertTriangle, Clock } from "lucide-react";
+import { Plus, AlertTriangle, Clock, Trash2, RotateCcw, Rocket, Bell, Info } from "lucide-react";
 import { listSectors } from "@/lib/sectors.functions";
-import { listShiftsByDay, createShift, updateShiftBlock, markShiftAbsent } from "@/lib/shifts.functions";
+import { listEmployees } from "@/lib/employees.functions";
+import { listShiftsByDay, createShift, updateShift, markShiftAbsent, deleteShift, clearAbsence } from "@/lib/shifts.functions";
 import { todayISO, trimTime, formatDatePt, ROLE_LABELS } from "@/lib/date-utils";
+import { computeAlerts } from "@/lib/alerts";
+import { OnboardingWizard } from "@/components/OnboardingWizard";
 
 export const Route = createFileRoute("/_authenticated/feed")({
   head: () => ({ meta: [{ title: "Feed Diário — EscalaPro OS" }, { name: "description", content: "Escala do dia com KPIs e ações rápidas." }] }),
