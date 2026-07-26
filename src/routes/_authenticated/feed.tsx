@@ -193,8 +193,10 @@ function FeedPage() {
           <ShiftCard
             key={s.id}
             shift={s}
+            violations={violationsById.get(s.id) ?? []}
             onAbsent={() => setAbsentShift(s)}
             onAdjust={() => setAdjustShift(s)}
+            onCover={() => setCoverShift(s)}
             onChanged={invalidate}
           />
         ))}
@@ -218,12 +220,15 @@ function FeedPage() {
         sectors={sectors.data ?? []}
         onCreated={invalidate}
       />
+      <CoverageSheet shift={coverShift} onOpenChange={(o) => !o && setCoverShift(null)} onAllocated={invalidate} />
       <EditShiftDialog
         shift={adjustShift}
         sectors={sectors.data ?? []}
+        check={complianceOf}
         onOpenChange={(o) => !o && setAdjustShift(null)}
         onSaved={invalidate}
       />
+
       <AbsenceDialog
         shift={absentShift}
         onOpenChange={(o) => !o && setAbsentShift(null)}
