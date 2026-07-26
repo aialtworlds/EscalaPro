@@ -167,6 +167,80 @@ function SemanaPage() {
           <span className="flex items-center gap-1"><span className="size-3 bg-warning/20 rounded" /> Freelancer</span>
         </div>
       </div>
+
+      <DuplicateWeekDialog open={dupOpen} onOpenChange={setDupOpen} weekStart={weekStart} />
     </AppShell>
   );
 }
+
+function DuplicateWeekDialog({
+  open, onOpenChange, weekStart,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  weekStart: string;
+}) {
+  const [target, setTarget] = useState(addDays(weekStart, 7));
+  const [includeFreelancers, setIncludeFreelancers] = useState(false);
+  const [overwrite, setOverwrite] = useState(false);
+  const qc = useQueryClient();
+  const fn = useServerFn(duplicateWeek);
+  const m = useMutation({
+    mutationFn: () =>
+      fn({ data: { from_week: weekStart, to_week: target, include_freelancers: includeFreelancers, overwrite } }),
+    onSuccess: (r) => {
+      toast.success(`${r.inserted} turnos copiados`);
+      qc.invalidateQueries({ queryKey: ["shifts"] });
+      onOpenChange(false);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
+  });
+
+  const targetLabel = `${target.slice(8, 10)}/${target.slice(5, 7)} — ${addDays(target, 6).slice(8, 10)}/${addDays(target, 6).slice(5, 7)}`;
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        onOpenChange(o);
+        if (o) { setTarget(addDays(weekStart, 7)); setOverwrite(false); }
+      }}
+    >
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Duplicar Semana</DialogTitle>
+          <DialogDescription>Copia todos os turnos desta semana para outra.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label className="text-xs">Semana de destino</Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Button size="icon" variant="outline" onClick={() => setTarget(addDays(target, -7))} aria-label="Anterior">
+                <ChevronLeft className="size-4" />
+              </Button>
+              <span className="flex-1 text-center font-mono text-sm font-bold">{targetLabel}</span>
+              <Button size="icon" variant="outline" onClick={() => setTarget(addDays(target, 7))} aria-label="Próxima">
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-xs">
+            <Checkbox checked={includeFreelancers} onCheckedChange={(v) => setIncludeFreelancers(v === true)} />
+            Incluir freelancers
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <Checkbox checked={overwrite} onCheckedChange={(v) => setOverwrite(v === true)} />
+            Substituir turnos existentes no destino
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button disabled={m.isPending || target === weekStart} onClick={() => m.mutate()}>
+            {m.isPending ? "Copiando..." : "Duplicar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
