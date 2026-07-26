@@ -35,12 +35,16 @@ function FeedPage() {
   const [freelancerOpen, setFreelancerOpen] = useState(false);
   const [adjustShift, setAdjustShift] = useState<any | null>(null);
   const [absentShift, setAbsentShift] = useState<any | null>(null);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [showAlerts, setShowAlerts] = useState(true);
 
   const qc = useQueryClient();
   const sectorsFn = useServerFn(listSectors);
   const shiftsFn = useServerFn(listShiftsByDay);
+  const empsFn = useServerFn(listEmployees);
 
   const sectors = useQuery({ queryKey: ["sectors"], queryFn: () => sectorsFn() });
+  const employees = useQuery({ queryKey: ["employees"], queryFn: () => empsFn() });
   const shifts = useQuery({
     queryKey: ["shifts", "day", date, sectorId],
     queryFn: () => shiftsFn({ data: { date, sector_id: sectorId } }),
@@ -49,6 +53,23 @@ function FeedPage() {
   const active = shifts.data?.filter((s) => s.status === "scheduled").length ?? 0;
   const absences = shifts.data?.filter((s) => s.status === "absent").length ?? 0;
   const extras = shifts.data?.filter((s) => s.is_freelancer || s.is_extra).length ?? 0;
+
+  const isEmptyWorkspace =
+    sectors.isSuccess && employees.isSuccess && !sectors.data?.length && !employees.data?.length;
+
+  const alerts =
+    shifts.data && employees.data && sectors.data
+      ? computeAlerts(
+          shifts.data as any,
+          (sectorId ? employees.data.filter((e) => e.sector_id === sectorId) : employees.data) as any,
+          (sectorId ? sectors.data.filter((s) => s.id === sectorId) : sectors.data) as any,
+        )
+      : [];
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["shifts"] });
+    qc.invalidateQueries({ queryKey: ["activity"] });
+  };
 
   return (
     <AppShell>
@@ -63,6 +84,21 @@ function FeedPage() {
         )}
       </div>
 
+      {/* Onboarding */}
+      {isEmptyWorkspace && (
+        <div className="mx-4 mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="flex items-center gap-2 text-sm font-bold">
+            <Rocket className="size-4 text-primary" /> Comece em 30 segundos
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Crie seus setores e os primeiros colaboradores para liberar o feed, a planilha semanal e o scanner.
+          </p>
+          <Button className="w-full mt-3 font-bold tracking-wide" onClick={() => setOnboardingOpen(true)}>
+            CONFIGURAR OPERAÇÃO
+          </Button>
+        </div>
+      )}
+
       {/* Date banner */}
       <div className="px-4 pt-4 pb-2">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Escala do Dia</p>
@@ -75,6 +111,47 @@ function FeedPage() {
         <Kpi label="Faltas" value={absences} accent="destructive" />
         <Kpi label="Extras" value={extras} accent="warning" />
       </div>
+
+      {/* Alerts */}
+      {alerts.length > 0 && (
+        <div className="px-4 mb-4">
+          <button
+            onClick={() => setShowAlerts((v) => !v)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-warning/40 bg-warning/10"
+          >
+            <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+              <Bell className="size-3.5" /> {alerts.length} alerta{alerts.length > 1 ? "s" : ""}
+            </span>
+            <span className="text-[10px] text-muted-foreground">{showAlerts ? "ocultar" : "ver"}</span>
+          </button>
+          {showAlerts && (
+            <div className="mt-2 space-y-2">
+              {alerts.map((a) => (
+                <div
+                  key={a.id}
+                  className={`rounded-lg border p-2.5 flex gap-2 ${
+                    a.level === "critical"
+                      ? "border-destructive/40 bg-destructive/5"
+                      : a.level === "warning"
+                        ? "border-warning/40 bg-warning/5"
+                        : "border-border bg-card"
+                  }`}
+                >
+                  {a.level === "info" ? (
+                    <Info className="size-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <AlertTriangle className={`size-3.5 mt-0.5 shrink-0 ${a.level === "critical" ? "text-destructive" : "text-warning"}`} />
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold">{a.title}</p>
+                    <p className="text-[11px] text-muted-foreground">{a.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Roster */}
       <div className="px-4 space-y-3">
@@ -92,6 +169,7 @@ function FeedPage() {
             shift={s}
             onAbsent={() => setAbsentShift(s)}
             onAdjust={() => setAdjustShift(s)}
+            onChanged={invalidate}
           />
         ))}
       </div>
@@ -105,27 +183,30 @@ function FeedPage() {
         <span className="text-xs font-bold uppercase tracking-tight">Freelancer</span>
       </button>
 
+      <OnboardingWizard open={onboardingOpen} onOpenChange={setOnboardingOpen} />
       <FreelancerSheet
         open={freelancerOpen}
         onOpenChange={setFreelancerOpen}
         date={date}
         sectorId={sectorId}
         sectors={sectors.data ?? []}
-        onCreated={() => qc.invalidateQueries({ queryKey: ["shifts"] })}
+        onCreated={invalidate}
       />
-      <AdjustBlockDialog
+      <EditShiftDialog
         shift={adjustShift}
+        sectors={sectors.data ?? []}
         onOpenChange={(o) => !o && setAdjustShift(null)}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["shifts"] })}
+        onSaved={invalidate}
       />
       <AbsenceDialog
         shift={absentShift}
         onOpenChange={(o) => !o && setAbsentShift(null)}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["shifts"] })}
+        onSaved={invalidate}
       />
     </AppShell>
   );
 }
+
 
 function SectorChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
