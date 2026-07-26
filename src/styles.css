@@ -105,6 +105,19 @@
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Hide the "Edit with Lovable" badge without affecting layout */
+#lovable-badge,
+[id^="lovable-badge"],
+[class*="lovable-badge"],
+a[href*="lovable.dev"][target="_blank"][class*="badge"],
+a[aria-label*="Lovable" i][target="_blank"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+
 @layer base {
   * { border-color: var(--color-border); }
   body {
