@@ -560,7 +560,14 @@ function EditShiftDialog({
               <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex: João Freelancer" />
             </div>
           )}
+          {shift && shift.status !== "absent" && (
+            <div className="rounded-lg border border-border bg-secondary/40 p-2.5 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Conformidade CLT</p>
+              <CltPanel violations={check(shift, { start_time: start, end_time: end })} />
+            </div>
+          )}
           {shift?.status === "absent" && (
+
             <Button variant="outline" className="w-full" disabled={revert.isPending} onClick={() => revert.mutate()}>
               <RotateCcw className="size-4 mr-1" /> Desfazer falta
             </Button>
