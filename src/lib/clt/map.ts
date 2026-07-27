@@ -45,6 +45,12 @@ type EmployeeRow = {
   compliance_profiles?: ProfileRow | null;
 };
 
+/** Cadastro antigo sem perfil de jornada cai no regime equivalente ao cargo. */
+const DEFAULT_REGIME_BY_ROLE: Record<string, ComplianceProfile | undefined> = {
+  estagiario: { regime: "estagio" },
+  escala_12x36: { regime: "escala_12x36", has_written_agreement: true },
+};
+
 export function toRuleEmployee(row: EmployeeRow): RuleEmployee {
   return {
     id: row.id,
@@ -54,6 +60,6 @@ export function toRuleEmployee(row: EmployeeRow): RuleEmployee {
     compliance_profile:
       toComplianceProfile(row.compliance_profiles) ??
       // Compatibilidade: cadastro antigo sem perfil cai no regime equivalente.
-      (row.role_profile === "estagiario" ? { regime: "estagio" } : null),
+      DEFAULT_REGIME_BY_ROLE[row.role_profile] ?? null,
   };
 }

@@ -105,6 +105,8 @@ function SettingsPage() {
                 <SelectItem value="clt_regular">CLT Regular (Padrão)</SelectItem>
                 <SelectItem value="estagiario">Estagiário (Máx 6h)</SelectItem>
                 <SelectItem value="clt_mulher">CLT Mulher (Proteção Domingo)</SelectItem>
+                <SelectItem value="escala_12x36">Escala 12x36</SelectItem>
+                <SelectItem value="pj">PJ / Prestador (fora da CLT)</SelectItem>
               </SelectContent>
             </Select>
           </div>

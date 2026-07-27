@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const roleProfile = z.enum(["clt_regular", "estagiario", "clt_mulher"]);
+const roleProfile = z.enum(["clt_regular", "estagiario", "clt_mulher", "escala_12x36", "pj"]);
 
 export const listEmployees = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

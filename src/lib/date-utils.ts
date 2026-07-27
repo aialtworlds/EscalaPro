@@ -69,6 +69,8 @@ export const ROLE_LABELS: Record<string, string> = {
   clt_regular: "CLT Regular",
   estagiario: "Estagiário",
   clt_mulher: "CLT Mulher",
+  escala_12x36: "Escala 12x36",
+  pj: "PJ / Prestador",
 };
 
 export const WEEKDAY_MAP_PT: Record<string, number> = {

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Camera, Settings, Home, CalendarDays, Activity } from "lucide-react";
+import { Camera, Settings, Home, CalendarDays, Activity, BarChart3 } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -44,11 +44,12 @@ function BottomNav() {
     { to: "/feed", label: "Feed", icon: Home },
     { to: "/semana", label: "Semana", icon: CalendarDays },
     { to: "/escanear", label: "Escanear", icon: Camera },
+    { to: "/relatorio", label: "Relatório", icon: BarChart3 },
     { to: "/atividade", label: "Log", icon: Activity },
   ] as const;
   return (
     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] bg-background/95 backdrop-blur-md border-t border-border z-40">
-      <div className="grid grid-cols-4">
+      <div className="grid grid-cols-5">
         {items.map((it) => {
           const active = path.startsWith(it.to);
           return (

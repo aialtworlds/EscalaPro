@@ -47,6 +47,12 @@ export function evaluateShift(
     return { violations: [], configWarnings: [], regime: "sem_vinculo" };
   }
 
+  if (employee.role_profile === "pj") {
+    // Prestador PJ: sem vínculo empregatício, a CLT não se aplica.
+    // A validação aqui é contratual, feita fora do motor.
+    return { violations: [], configWarnings: [], regime: "pj" };
+  }
+
   const resolved = resolveParams(employee.compliance_profile ?? null, candidate.shift_date);
 
   // Jornada contratual do cadastro só entra quando não foi definida por
