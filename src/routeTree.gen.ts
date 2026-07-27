@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSemanaRouteImport } from './routes/_authenticated/semana'
+import { Route as AuthenticatedRelatorioRouteImport } from './routes/_authenticated/relatorio'
 import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
 import { Route as AuthenticatedEscanearRouteImport } from './routes/_authenticated/escanear'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
@@ -45,6 +46,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedSemanaRoute = AuthenticatedSemanaRouteImport.update({
   id: '/semana',
   path: '/semana',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRelatorioRoute = AuthenticatedRelatorioRouteImport.update({
+  id: '/relatorio',
+  path: '/relatorio',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/escanear': typeof AuthenticatedEscanearRoute
   '/feed': typeof AuthenticatedFeedRoute
+  '/relatorio': typeof AuthenticatedRelatorioRoute
   '/semana': typeof AuthenticatedSemanaRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/escanear': typeof AuthenticatedEscanearRoute
   '/feed': typeof AuthenticatedFeedRoute
+  '/relatorio': typeof AuthenticatedRelatorioRoute
   '/semana': typeof AuthenticatedSemanaRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/escanear': typeof AuthenticatedEscanearRoute
   '/_authenticated/feed': typeof AuthenticatedFeedRoute
+  '/_authenticated/relatorio': typeof AuthenticatedRelatorioRoute
   '/_authenticated/semana': typeof AuthenticatedSemanaRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/escanear'
     | '/feed'
+    | '/relatorio'
     | '/semana'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/escanear'
     | '/feed'
+    | '/relatorio'
     | '/semana'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/_authenticated/configuracoes'
     | '/_authenticated/escanear'
     | '/_authenticated/feed'
+    | '/_authenticated/relatorio'
     | '/_authenticated/semana'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -228,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/semana'
       fullPath: '/semana'
       preLoaderRoute: typeof AuthenticatedSemanaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/relatorio': {
+      id: '/_authenticated/relatorio'
+      path: '/relatorio'
+      fullPath: '/relatorio'
+      preLoaderRoute: typeof AuthenticatedRelatorioRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/feed': {
@@ -294,6 +313,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedEscanearRoute: typeof AuthenticatedEscanearRoute
   AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
+  AuthenticatedRelatorioRoute: typeof AuthenticatedRelatorioRoute
   AuthenticatedSemanaRoute: typeof AuthenticatedSemanaRoute
 }
 
@@ -302,6 +322,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedEscanearRoute: AuthenticatedEscanearRoute,
   AuthenticatedFeedRoute: AuthenticatedFeedRoute,
+  AuthenticatedRelatorioRoute: AuthenticatedRelatorioRoute,
   AuthenticatedSemanaRoute: AuthenticatedSemanaRoute,
 }
 
