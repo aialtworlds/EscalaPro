@@ -17,13 +17,18 @@ export const suggestCoverage = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const week = mondayUTC(gap.shift_date);
-    const [{ data: employees }, { data: weekShifts }] = await Promise.all([
-      context.supabase.from("employees").select("*"),
+    const [{ data: employees }, { data: weekShifts }, { data: holidays }] = await Promise.all([
+      context.supabase.from("employees").select("*, compliance_profiles(*, agreements(*))"),
       context.supabase
         .from("shifts")
         .select("id, employee_id, shift_date, start_time, end_time, status")
         .gte("shift_date", week)
         .lt("shift_date", addDaysUTC(week, 7)),
+      context.supabase
+        .from("holidays")
+        .select("holiday_date, name, scope")
+        .gte("holiday_date", week)
+        .lt("holiday_date", addDaysUTC(week, 7)),
     ]);
 
     const candidates = buildCandidates(
@@ -31,6 +36,7 @@ export const suggestCoverage = createServerFn({ method: "POST" })
       (employees ?? []) as never,
       (weekShifts ?? []) as never,
       gap.sector_id,
+      holidays ?? [],
     );
     const eligible = candidates.filter((c) => !c.blocked);
     if (!eligible.length) return { candidates, ranked: [] as { employee_id: string; reason: string }[] };
