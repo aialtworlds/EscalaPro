@@ -16,7 +16,9 @@ import { listEmployees } from "@/lib/employees.functions";
 import { listShiftsByDay, listShiftsByWeek, createShift, updateShift, markShiftAbsent, deleteShift, clearAbsence } from "@/lib/shifts.functions";
 import { todayISO, trimTime, formatDatePt, ROLE_LABELS, mondayOf } from "@/lib/date-utils";
 import { computeAlerts } from "@/lib/alerts";
-import { checkShiftCompliance } from "@/lib/clt-rules";
+import { evaluateShift } from "@/lib/clt-rules";
+import { toRuleEmployee } from "@/lib/clt/map";
+import { listHolidays, listOverrides, registerOverride } from "@/lib/compliance.functions";
 import type { Violation } from "@/lib/clt-rules";
 import { CltBadge, CltPanel } from "@/components/CltBadge";
 import { CoverageSheet } from "@/components/CoverageSheet";
@@ -48,6 +50,9 @@ function FeedPage() {
   const shiftsFn = useServerFn(listShiftsByDay);
   const weekFn = useServerFn(listShiftsByWeek);
   const empsFn = useServerFn(listEmployees);
+  const holidaysFn = useServerFn(listHolidays);
+  const overridesFn = useServerFn(listOverrides);
+  const [overrideTarget, setOverrideTarget] = useState<{ shift: any; violation: Violation } | null>(null);
 
   const weekStart = mondayOf(date);
   const sectors = useQuery({ queryKey: ["sectors"], queryFn: () => sectorsFn() });
@@ -61,6 +66,18 @@ function FeedPage() {
     queryFn: () => weekFn({ data: { week_start: weekStart } }),
   });
 
+  const holidays = useQuery({ queryKey: ["holidays"], queryFn: () => holidaysFn() });
+  const dayIds = ((shifts.data ?? []) as any[]).map((s) => s.id);
+  const overrides = useQuery({
+    queryKey: ["overrides", dayIds.join(",")],
+    enabled: dayIds.length > 0,
+    queryFn: () => overridesFn({ data: { shift_ids: dayIds } }),
+  });
+  const overridesFor = (shiftId: string) =>
+    Object.fromEntries(
+      ((overrides.data ?? []) as any[]).filter((o) => o.shift_id === shiftId).map((o) => [o.rule_code, o.justification]),
+    );
+
   const active = shifts.data?.filter((s) => s.status === "scheduled").length ?? 0;
   const absences = shifts.data?.filter((s) => s.status === "absent").length ?? 0;
   const extras = shifts.data?.filter((s) => s.is_freelancer || s.is_extra).length ?? 0;
@@ -68,17 +85,28 @@ function FeedPage() {
   const isEmptyWorkspace =
     sectors.isSuccess && employees.isSuccess && !sectors.data?.length && !employees.data?.length;
 
-  // Motor CLT: avalia cada turno do dia contra a semana inteira do colaborador.
-  const complianceOf = (shift: any, overrides?: Partial<any>): Violation[] => {
+  // Motor de conformidade: avalia cada turno do dia contra a semana inteira do
+  // colaborador, com os parâmetros do perfil de jornada (regime/convenção),
+  // os feriados cadastrados e as liberações já registradas.
+  const complianceOf = (shift: any, patch?: Partial<any>) => {
     const emp = employees.data?.find((e) => e.id === shift.employee_id);
-    if (!emp || !weekShifts.data) return [];
+    if (!emp || !weekShifts.data) return { violations: [] as Violation[], configWarnings: [] as string[] };
     const others = (weekShifts.data as any[]).filter((s) => s.id !== shift.id);
-    return checkShiftCompliance({ ...shift, ...overrides } as any, emp as any, others as any);
+    const r = evaluateShift({ ...shift, ...patch } as any, toRuleEmployee(emp as any), others as any, {
+      holidays: (holidays.data ?? []) as any,
+      overrides: overridesFor(shift.id),
+    });
+    return { violations: r.violations, configWarnings: r.configWarnings };
   };
 
   const violationsById = new Map<string, Violation[]>();
+  const warningsById = new Map<string, string[]>();
   for (const s of (shifts.data ?? []) as any[]) {
-    if (s.status !== "absent") violationsById.set(s.id, complianceOf(s));
+    if (s.status !== "absent") {
+      const r = complianceOf(s);
+      violationsById.set(s.id, r.violations);
+      warningsById.set(s.id, r.configWarnings);
+    }
   }
   const cltIssues = [...violationsById.values()].filter((v) => v.some((x) => x.level === "error")).length;
 
@@ -195,6 +223,8 @@ function FeedPage() {
             key={s.id}
             shift={s}
             violations={violationsById.get(s.id) ?? []}
+            configWarnings={warningsById.get(s.id) ?? []}
+            onOverride={(v) => setOverrideTarget({ shift: s, violation: v })}
             onAbsent={() => setAbsentShift(s)}
             onAdjust={() => setAdjustShift(s)}
             onCover={() => setCoverShift(s)}
@@ -228,6 +258,12 @@ function FeedPage() {
         check={complianceOf}
         onOpenChange={(o) => !o && setAdjustShift(null)}
         onSaved={invalidate}
+      />
+
+      <OverrideDialog
+        target={overrideTarget}
+        onOpenChange={(o) => !o && setOverrideTarget(null)}
+        onSaved={() => { setOverrideTarget(null); qc.invalidateQueries({ queryKey: ["overrides"] }); qc.invalidateQueries({ queryKey: ["activity"] }); }}
       />
 
       <AbsenceDialog
@@ -267,10 +303,12 @@ function Kpi({ label, value, accent }: { label: string; value: number; accent?: 
 }
 
 function ShiftCard({
-  shift, violations = [], onAbsent, onAdjust, onCover,
+  shift, violations = [], configWarnings = [], onAbsent, onAdjust, onCover, onOverride,
 }: {
   shift: any;
   violations?: Violation[];
+  configWarnings?: string[];
+  onOverride?: (v: Violation) => void;
   onAbsent: () => void;
   onAdjust: () => void;
   onCover: () => void;
@@ -299,7 +337,7 @@ function ShiftCard({
         </span>
       </div>
 
-      {violations.length > 0 && !isAbsent && (
+      {(violations.length > 0 || configWarnings.length > 0) && !isAbsent && (
         <div>
           <button onClick={() => setShowClt((v) => !v)} className="flex items-center gap-1.5">
             <CltBadge violations={violations} />
@@ -307,7 +345,11 @@ function ShiftCard({
               {violations.length} ponto{violations.length > 1 ? "s" : ""} — {showClt ? "ocultar" : "ver"}
             </span>
           </button>
-          {showClt && <div className="mt-2"><CltPanel violations={violations} /></div>}
+          {showClt && (
+            <div className="mt-2">
+              <CltPanel violations={violations} configWarnings={configWarnings} onOverride={onOverride} />
+            </div>
+          )}
         </div>
       )}
 
@@ -477,7 +519,7 @@ function EditShiftDialog({
 }: {
   shift: any | null;
   sectors: any[];
-  check: (shift: any, overrides?: Partial<any>) => Violation[];
+  check: (shift: any, overrides?: Partial<any>) => { violations: Violation[]; configWarnings: string[] };
   onOpenChange: (o: boolean) => void;
   onSaved: () => void;
 }) {
@@ -564,7 +606,7 @@ function EditShiftDialog({
           {shift && shift.status !== "absent" && (
             <div className="rounded-lg border border-border bg-secondary/40 p-2.5 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Conformidade CLT</p>
-              <CltPanel violations={check(shift, { start_time: start, end_time: end })} />
+              <CltPanel {...check(shift, { start_time: start, end_time: end })} />
             </div>
           )}
           {shift?.status === "absent" && (
@@ -627,6 +669,51 @@ function AbsenceDialog({ shift, onOpenChange, onSaved }: { shift: any | null; on
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button variant="destructive" onClick={() => m.mutate()} disabled={m.isPending}>
             Registrar Falta
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+function OverrideDialog({
+  target,
+  onOpenChange,
+  onSaved,
+}: {
+  target: { shift: any; violation: Violation } | null;
+  onOpenChange: (o: boolean) => void;
+  onSaved: () => void;
+}) {
+  const [justification, setJustification] = useState("");
+  const fn = useServerFn(registerOverride);
+  const m = useMutation({
+    mutationFn: () =>
+      fn({ data: { shift_id: target!.shift.id, rule_code: target!.violation.code, justification } }),
+    onSuccess: () => { toast.success("Liberação registrada no log"); setJustification(""); onSaved(); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
+  });
+  return (
+    <Dialog open={!!target} onOpenChange={(o) => !o && onOpenChange(false)}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Liberar alerta</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">{target?.violation.message}</p>
+          <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{target?.violation.basis}</p>
+          <Label className="text-xs">Justificativa (fica registrada no log)</Label>
+          <Input
+            value={justification}
+            onChange={(e) => setJustification(e.target.value)}
+            placeholder="Ex: compensação acordada na sexta-feira"
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button disabled={justification.trim().length < 5 || m.isPending} onClick={() => m.mutate()}>
+            Registrar liberação
           </Button>
         </DialogFooter>
       </DialogContent>
