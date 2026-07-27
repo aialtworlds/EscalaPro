@@ -54,6 +54,7 @@ export function evaluateShift(
   const contractual = Number(employee.journey_hours ?? NaN);
   if (
     resolved.sources.journeyHours.origin === "federal" &&
+    !resolved.regimeKeys.has("journeyHours") &&
     Number.isFinite(contractual) &&
     contractual > 0 &&
     contractual < resolved.params.journeyHours

@@ -21,6 +21,8 @@ export type ResolvedParams = {
   hasWrittenAgreement: boolean;
   /** Avisos sobre a própria configuração (convenção vencida, não confirmada). */
   configWarnings: string[];
+  /** Parâmetros definidos pelo regime — não podem ser rebaixados pelo cadastro. */
+  regimeKeys: Set<ParamKey>;
 };
 
 const KEYS = Object.keys(FEDERAL_PARAMS) as ParamKey[];
@@ -59,7 +61,9 @@ export function resolveParams(profile: ComplianceProfile | null | undefined, dat
   for (const key of KEYS) sources[key] = { origin: "federal", basis: FEDERAL_BASIS[key] };
 
   const regime: WorkRegime = profile?.regime ?? "padrao_5x2";
-  applyLayer(params, sources, REGIME_PARAMS[regime], { origin: "federal", basis: REGIME_BASIS[regime] });
+  const regimePatch = REGIME_PARAMS[regime];
+  applyLayer(params, sources, regimePatch, { origin: "federal", basis: REGIME_BASIS[regime] });
+  const regimeKeys = new Set(Object.keys(regimePatch) as ParamKey[]);
 
   const configWarnings: string[] = [];
   const agreement = profile?.agreement ?? null;
@@ -87,5 +91,6 @@ export function resolveParams(profile: ComplianceProfile | null | undefined, dat
     sources,
     hasWrittenAgreement: !!profile?.has_written_agreement,
     configWarnings,
+    regimeKeys,
   };
 }
