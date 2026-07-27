@@ -73,8 +73,142 @@ export type Database = {
         }
         Relationships: []
       }
+      agreements: {
+        Row: {
+          category: string | null
+          city: string | null
+          confirmed: boolean
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          owner_id: string
+          params: Json
+          source: Database["public"]["Enums"]["agreement_source"]
+          state_uf: string | null
+          union_name: string | null
+          updated_at: string
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          category?: string | null
+          city?: string | null
+          confirmed?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          owner_id: string
+          params?: Json
+          source?: Database["public"]["Enums"]["agreement_source"]
+          state_uf?: string | null
+          union_name?: string | null
+          updated_at?: string
+          valid_from: string
+          valid_to?: string | null
+        }
+        Update: {
+          category?: string | null
+          city?: string | null
+          confirmed?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          params?: Json
+          source?: Database["public"]["Enums"]["agreement_source"]
+          state_uf?: string | null
+          union_name?: string | null
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: []
+      }
+      compliance_overrides: {
+        Row: {
+          created_at: string
+          id: string
+          justification: string
+          owner_id: string
+          rule_code: string
+          shift_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          justification: string
+          owner_id: string
+          rule_code: string
+          shift_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          justification?: string
+          owner_id?: string
+          rule_code?: string
+          shift_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_overrides_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_profiles: {
+        Row: {
+          agreement_id: string | null
+          created_at: string
+          has_written_agreement: boolean
+          id: string
+          name: string
+          owner_id: string
+          params: Json
+          regime: Database["public"]["Enums"]["work_regime"]
+          updated_at: string
+        }
+        Insert: {
+          agreement_id?: string | null
+          created_at?: string
+          has_written_agreement?: boolean
+          id?: string
+          name: string
+          owner_id: string
+          params?: Json
+          regime?: Database["public"]["Enums"]["work_regime"]
+          updated_at?: string
+        }
+        Update: {
+          agreement_id?: string | null
+          created_at?: string
+          has_written_agreement?: boolean
+          id?: string
+          name?: string
+          owner_id?: string
+          params?: Json
+          regime?: Database["public"]["Enums"]["work_regime"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_profiles_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "agreements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
+          compliance_profile_id: string | null
           created_at: string
           entry_time: string
           id: string
@@ -85,6 +219,7 @@ export type Database = {
           sector_id: string | null
         }
         Insert: {
+          compliance_profile_id?: string | null
           created_at?: string
           entry_time?: string
           id?: string
@@ -95,6 +230,7 @@ export type Database = {
           sector_id?: string | null
         }
         Update: {
+          compliance_profile_id?: string | null
           created_at?: string
           entry_time?: string
           id?: string
@@ -106,6 +242,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "employees_compliance_profile_id_fkey"
+            columns: ["compliance_profile_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "employees_sector_id_fkey"
             columns: ["sector_id"]
             isOneToOne: false
@@ -113,6 +256,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      holidays: {
+        Row: {
+          city: string | null
+          created_at: string
+          holiday_date: string
+          id: string
+          name: string
+          owner_id: string
+          scope: Database["public"]["Enums"]["holiday_scope"]
+          state_uf: string | null
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          holiday_date: string
+          id?: string
+          name: string
+          owner_id: string
+          scope?: Database["public"]["Enums"]["holiday_scope"]
+          state_uf?: string | null
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          holiday_date?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          scope?: Database["public"]["Enums"]["holiday_scope"]
+          state_uf?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -221,8 +397,18 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      agreement_source: "manual" | "ia"
+      holiday_scope: "nacional" | "estadual" | "municipal"
       role_profile: "clt_regular" | "estagiario" | "clt_mulher"
       shift_status: "scheduled" | "absent" | "completed"
+      work_regime:
+        | "padrao_5x2"
+        | "padrao_6x1"
+        | "escala_12x36"
+        | "escala_24x72"
+        | "estagio"
+        | "parcial"
+        | "intermitente"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -350,8 +536,19 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      agreement_source: ["manual", "ia"],
+      holiday_scope: ["nacional", "estadual", "municipal"],
       role_profile: ["clt_regular", "estagiario", "clt_mulher"],
       shift_status: ["scheduled", "absent", "completed"],
+      work_regime: [
+        "padrao_5x2",
+        "padrao_6x1",
+        "escala_12x36",
+        "escala_24x72",
+        "estagio",
+        "parcial",
+        "intermitente",
+      ],
     },
   },
 } as const
