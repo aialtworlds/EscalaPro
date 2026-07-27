@@ -9,7 +9,7 @@ export const listEmployees = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("employees")
-      .select("*, sectors(name)")
+      .select("*, sectors(name), compliance_profiles(*, agreements(*))")
       .order("name");
     if (error) throw new Error(error.message);
     return data;
@@ -24,6 +24,7 @@ export const createEmployee = createServerFn({ method: "POST" })
       entry_time: z.string().regex(/^\d{2}:\d{2}$/),
       journey_hours: z.number().min(1).max(12),
       sector_id: z.string().uuid().nullable(),
+      compliance_profile_id: z.string().uuid().nullable().optional(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
