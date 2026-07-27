@@ -1,49 +1,43 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, AlertTriangle, Clock, Trash2, RotateCcw, Rocket, Bell, Info, Sparkles } from "lucide-react";
+import { Plus, AlertTriangle, Rocket, Bell, Info } from "lucide-react";
 import { listSectors } from "@/lib/sectors.functions";
 import { listEmployees } from "@/lib/employees.functions";
-import { listShiftsByDay, listShiftsByWeek, createShift, updateShift, markShiftAbsent, deleteShift, clearAbsence } from "@/lib/shifts.functions";
-import { todayISO, trimTime, formatDatePt, ROLE_LABELS, mondayOf } from "@/lib/date-utils";
+import { listShiftsByDay, listShiftsByWeek } from "@/lib/shifts.functions";
+import { todayISO, formatDatePt, mondayOf } from "@/lib/date-utils";
 import { computeAlerts } from "@/lib/alerts";
 import { evaluateShift } from "@/lib/clt-rules";
 import { toRuleEmployee } from "@/lib/clt/map";
-import { listHolidays, listOverrides, registerOverride } from "@/lib/compliance.functions";
+import { listHolidays, listOverrides } from "@/lib/compliance.functions";
 import type { Violation } from "@/lib/clt-rules";
-import { CltBadge, CltPanel } from "@/components/CltBadge";
+import type { DayShift, EmployeeWithProfile, OverrideRow, SectorRow, ShiftPatch, WeekShift } from "@/lib/types";
 import { CoverageSheet } from "@/components/CoverageSheet";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
+import { Kpi, SectorChip, ShiftCard } from "@/components/feed/ShiftCard";
+import { FreelancerSheet } from "@/components/feed/FreelancerSheet";
+import { EditShiftDialog } from "@/components/feed/EditShiftDialog";
+import { AbsenceDialog } from "@/components/feed/AbsenceDialog";
+import { OverrideDialog, type OverrideTarget } from "@/components/feed/OverrideDialog";
 
 export const Route = createFileRoute("/_authenticated/feed")({
   head: () => ({ meta: [{ title: "Feed Diário — EscalaPro OS" }, { name: "description", content: "Escala do dia com KPIs e ações rápidas." }] }),
   component: FeedPage,
 });
 
-const SHIFT_PRESETS = [
-  { label: "Manhã", start: "08:00", end: "16:00" },
-  { label: "Tarde", start: "14:00", end: "22:00" },
-  { label: "Noite", start: "18:00", end: "02:00" },
-] as const;
-
 function FeedPage() {
   const [date] = useState(todayISO());
   const [sectorId, setSectorId] = useState<string | null>(null);
   const [freelancerOpen, setFreelancerOpen] = useState(false);
-  const [adjustShift, setAdjustShift] = useState<any | null>(null);
-  const [absentShift, setAbsentShift] = useState<any | null>(null);
-  const [coverShift, setCoverShift] = useState<any | null>(null);
+  const [adjustShift, setAdjustShift] = useState<DayShift | null>(null);
+  const [absentShift, setAbsentShift] = useState<DayShift | null>(null);
+  const [coverShift, setCoverShift] = useState<DayShift | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [showAlerts, setShowAlerts] = useState(true);
+  const [overrideTarget, setOverrideTarget] = useState<OverrideTarget | null>(null);
 
   const qc = useQueryClient();
   const sectorsFn = useServerFn(listSectors);
@@ -52,35 +46,35 @@ function FeedPage() {
   const empsFn = useServerFn(listEmployees);
   const holidaysFn = useServerFn(listHolidays);
   const overridesFn = useServerFn(listOverrides);
-  const [overrideTarget, setOverrideTarget] = useState<{ shift: any; violation: Violation } | null>(null);
 
   const weekStart = mondayOf(date);
-  const sectors = useQuery({ queryKey: ["sectors"], queryFn: () => sectorsFn() });
-  const employees = useQuery({ queryKey: ["employees"], queryFn: () => empsFn() });
+  const sectors = useQuery({ queryKey: ["sectors"], queryFn: () => sectorsFn() as Promise<SectorRow[]> });
+  const employees = useQuery({ queryKey: ["employees"], queryFn: () => empsFn() as Promise<EmployeeWithProfile[]> });
   const shifts = useQuery({
     queryKey: ["shifts", "day", date, sectorId],
-    queryFn: () => shiftsFn({ data: { date, sector_id: sectorId } }),
+    queryFn: () => shiftsFn({ data: { date, sector_id: sectorId } }) as Promise<DayShift[]>,
   });
   const weekShifts = useQuery({
     queryKey: ["shifts", "week", weekStart],
-    queryFn: () => weekFn({ data: { week_start: weekStart } }),
+    queryFn: () => weekFn({ data: { week_start: weekStart } }) as Promise<WeekShift[]>,
   });
-
   const holidays = useQuery({ queryKey: ["holidays"], queryFn: () => holidaysFn() });
-  const dayIds = ((shifts.data ?? []) as any[]).map((s) => s.id);
+
+  const dayShifts = shifts.data ?? [];
+  const dayIds = dayShifts.map((s) => s.id);
   const overrides = useQuery({
     queryKey: ["overrides", dayIds.join(",")],
     enabled: dayIds.length > 0,
-    queryFn: () => overridesFn({ data: { shift_ids: dayIds } }),
+    queryFn: () => overridesFn({ data: { shift_ids: dayIds } }) as Promise<OverrideRow[]>,
   });
   const overridesFor = (shiftId: string) =>
     Object.fromEntries(
-      ((overrides.data ?? []) as any[]).filter((o) => o.shift_id === shiftId).map((o) => [o.rule_code, o.justification]),
+      (overrides.data ?? []).filter((o) => o.shift_id === shiftId).map((o) => [o.rule_code, o.justification]),
     );
 
-  const active = shifts.data?.filter((s) => s.status === "scheduled").length ?? 0;
-  const absences = shifts.data?.filter((s) => s.status === "absent").length ?? 0;
-  const extras = shifts.data?.filter((s) => s.is_freelancer || s.is_extra).length ?? 0;
+  const active = dayShifts.filter((s) => s.status === "scheduled").length;
+  const absences = dayShifts.filter((s) => s.status === "absent").length;
+  const extras = dayShifts.filter((s) => s.is_freelancer || s.is_extra).length;
 
   const isEmptyWorkspace =
     sectors.isSuccess && employees.isSuccess && !sectors.data?.length && !employees.data?.length;
@@ -88,12 +82,12 @@ function FeedPage() {
   // Motor de conformidade: avalia cada turno do dia contra a semana inteira do
   // colaborador, com os parâmetros do perfil de jornada (regime/convenção),
   // os feriados cadastrados e as liberações já registradas.
-  const complianceOf = (shift: any, patch?: Partial<any>) => {
+  const complianceOf = (shift: DayShift, patch?: ShiftPatch) => {
     const emp = employees.data?.find((e) => e.id === shift.employee_id);
     if (!emp || !weekShifts.data) return { violations: [] as Violation[], configWarnings: [] as string[] };
-    const others = (weekShifts.data as any[]).filter((s) => s.id !== shift.id);
-    const r = evaluateShift({ ...shift, ...patch } as any, toRuleEmployee(emp as any), others as any, {
-      holidays: (holidays.data ?? []) as any,
+    const others = weekShifts.data.filter((s) => s.id !== shift.id);
+    const r = evaluateShift({ ...shift, ...patch }, toRuleEmployee(emp), others, {
+      holidays: holidays.data ?? [],
       overrides: overridesFor(shift.id),
     });
     return { violations: r.violations, configWarnings: r.configWarnings };
@@ -101,7 +95,7 @@ function FeedPage() {
 
   const violationsById = new Map<string, Violation[]>();
   const warningsById = new Map<string, string[]>();
-  for (const s of (shifts.data ?? []) as any[]) {
+  for (const s of dayShifts) {
     if (s.status !== "absent") {
       const r = complianceOf(s);
       violationsById.set(s.id, r.violations);
@@ -113,9 +107,9 @@ function FeedPage() {
   const alerts =
     shifts.data && employees.data && sectors.data
       ? computeAlerts(
-          shifts.data as any,
-          (sectorId ? employees.data.filter((e) => e.sector_id === sectorId) : employees.data) as any,
-          (sectorId ? sectors.data.filter((s) => s.id === sectorId) : sectors.data) as any,
+          dayShifts,
+          sectorId ? employees.data.filter((e) => e.sector_id === sectorId) : employees.data,
+          sectorId ? sectors.data.filter((s) => s.id === sectorId) : sectors.data,
         )
       : [];
 
@@ -123,7 +117,6 @@ function FeedPage() {
     qc.invalidateQueries({ queryKey: ["shifts"] });
     qc.invalidateQueries({ queryKey: ["activity"] });
   };
-
 
   return (
     <AppShell>
@@ -218,7 +211,7 @@ function FeedPage() {
             <p className="text-xs text-muted-foreground mt-1">Injete um freelancer ou escaneie uma escala.</p>
           </div>
         )}
-        {shifts.data?.map((s) => (
+        {dayShifts.map((s) => (
           <ShiftCard
             key={s.id}
             shift={s}
@@ -228,7 +221,6 @@ function FeedPage() {
             onAbsent={() => setAbsentShift(s)}
             onAdjust={() => setAdjustShift(s)}
             onCover={() => setCoverShift(s)}
-            onChanged={invalidate}
           />
         ))}
       </div>
@@ -259,464 +251,16 @@ function FeedPage() {
         onOpenChange={(o) => !o && setAdjustShift(null)}
         onSaved={invalidate}
       />
-
       <OverrideDialog
         target={overrideTarget}
         onOpenChange={(o) => !o && setOverrideTarget(null)}
         onSaved={() => { setOverrideTarget(null); qc.invalidateQueries({ queryKey: ["overrides"] }); qc.invalidateQueries({ queryKey: ["activity"] }); }}
       />
-
       <AbsenceDialog
         shift={absentShift}
         onOpenChange={(o) => !o && setAbsentShift(null)}
         onSaved={invalidate}
       />
     </AppShell>
-  );
-}
-
-
-function SectorChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${
-        active
-          ? "bg-foreground text-background"
-          : "bg-secondary text-muted-foreground border border-border hover:text-foreground"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function Kpi({ label, value, accent }: { label: string; value: number; accent?: "destructive" | "warning" }) {
-  const border =
-    accent === "destructive" ? "border-l-4 border-l-destructive" : accent === "warning" ? "border-l-4 border-l-warning" : "";
-  return (
-    <div className={`flex-1 bg-card border border-border p-3 rounded-lg shadow-xs ${border}`}>
-      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-2xl font-mono font-bold">{String(value).padStart(2, "0")}</p>
-    </div>
-  );
-}
-
-function ShiftCard({
-  shift, violations = [], configWarnings = [], onAbsent, onAdjust, onCover, onOverride,
-}: {
-  shift: any;
-  violations?: Violation[];
-  configWarnings?: string[];
-  onOverride?: (v: Violation) => void;
-  onAbsent: () => void;
-  onAdjust: () => void;
-  onCover: () => void;
-  onChanged?: () => void;
-}) {
-  const isAbsent = shift.status === "absent";
-  const name = shift.employees?.name ?? shift.freelancer_label ?? "Freelancer";
-  const role = shift.is_freelancer ? "Freelancer" : ROLE_LABELS[shift.employees?.role_profile] ?? "";
-  const [showClt, setShowClt] = useState(false);
-  return (
-    <div
-      className={`animate-fade-in bg-card border rounded-xl p-3 flex flex-col gap-3 shadow-sm ${
-        isAbsent ? "border-destructive/40 bg-destructive/5" : "border-border"
-      } ${shift.is_freelancer ? "border-dashed" : ""}`}
-    >
-      <div className="flex justify-between items-start gap-3">
-        <div className="min-w-0">
-          <h3 className="font-bold text-sm truncate">{name}</h3>
-          <p className="text-[10px] text-muted-foreground uppercase font-medium">
-            {role}
-            {shift.sectors?.name && ` • ${shift.sectors.name}`}
-          </p>
-        </div>
-        <span className="shrink-0 px-2 py-1 bg-secondary border border-border text-[10px] font-mono font-bold rounded">
-          {trimTime(shift.start_time)} — {trimTime(shift.end_time)}
-        </span>
-      </div>
-
-      {(violations.length > 0 || configWarnings.length > 0) && !isAbsent && (
-        <div>
-          <button onClick={() => setShowClt((v) => !v)} className="flex items-center gap-1.5">
-            <CltBadge violations={violations} />
-            <span className="text-[10px] text-muted-foreground">
-              {violations.length} ponto{violations.length > 1 ? "s" : ""} — {showClt ? "ocultar" : "ver"}
-            </span>
-          </button>
-          {showClt && (
-            <div className="mt-2">
-              <CltPanel violations={violations} configWarnings={configWarnings} onOverride={onOverride} />
-            </div>
-          )}
-        </div>
-      )}
-
-      {isAbsent ? (
-        <div className="flex flex-col gap-2 pt-1 border-t border-destructive/20">
-          <span className="flex items-center gap-1.5 text-xs font-bold text-destructive">
-            <AlertTriangle className="size-3.5" /> FALTA REGISTRADA
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={onCover}
-              className="flex-1 py-2 text-[10px] font-bold uppercase tracking-wider bg-primary text-primary-foreground rounded active:scale-95 transition flex items-center justify-center gap-1"
-            >
-              <Sparkles className="size-3" /> Buscar cobertura
-            </button>
-            <button
-              onClick={onAdjust}
-              className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider bg-secondary text-foreground rounded border border-border active:scale-95 transition"
-            >
-              Editar
-            </button>
-          </div>
-        </div>
-      ) : (
-
-        <div className="flex gap-2 border-t border-border pt-3">
-          <button
-            onClick={onAbsent}
-            className="flex-1 py-2 text-[10px] font-bold uppercase tracking-wider bg-destructive/10 text-destructive rounded border border-destructive/20 active:scale-95 transition"
-          >
-            Registrar Falta
-          </button>
-          <button
-            onClick={onAdjust}
-            className="flex-1 py-2 text-[10px] font-bold uppercase tracking-wider bg-secondary text-foreground rounded border border-border active:scale-95 transition"
-          >
-            <Clock className="size-3 inline mr-1" />
-            Ajustar
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FreelancerSheet({
-  open, onOpenChange, date, sectorId, sectors, onCreated,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  date: string;
-  sectorId: string | null;
-  sectors: any[];
-  onCreated: () => void;
-}) {
-  const [preset, setPreset] = useState<number>(0);
-  const [customStart, setCustomStart] = useState("08:00");
-  const [customEnd, setCustomEnd] = useState("16:00");
-  const [label, setLabel] = useState("");
-  const [pickedSector, setPickedSector] = useState<string | null>(sectorId);
-  const createFn = useServerFn(createShift);
-  const m = useMutation({
-    mutationFn: (v: { start: string; end: string }) =>
-      createFn({
-        data: {
-          employee_id: null,
-          sector_id: pickedSector,
-          shift_date: date,
-          start_time: v.start,
-          end_time: v.end,
-          is_freelancer: true,
-          freelancer_label: label || null,
-          is_extra: true,
-        },
-      }),
-    onSuccess: () => {
-      toast.success("Freelancer alocado");
-      onCreated();
-      onOpenChange(false);
-      setLabel("");
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
-  });
-
-  const isCustom = preset === 3;
-  const start = isCustom ? customStart : SHIFT_PRESETS[preset].start;
-  const end = isCustom ? customEnd : SHIFT_PRESETS[preset].end;
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-w-[440px] mx-auto">
-        <SheetHeader>
-          <SheetTitle>Injetar Freelancer</SheetTitle>
-          <SheetDescription>Selecione o turno para cobertura imediata.</SheetDescription>
-        </SheetHeader>
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          {SHIFT_PRESETS.map((p, i) => (
-            <button
-              key={p.label}
-              onClick={() => setPreset(i)}
-              className={`p-4 border rounded-xl text-left transition ${
-                preset === i ? "bg-primary/5 border-primary ring-2 ring-primary" : "border-border bg-card"
-              }`}
-            >
-              <p className={`text-[10px] font-bold uppercase ${preset === i ? "text-primary" : "text-muted-foreground"}`}>{p.label}</p>
-              <p className="font-mono text-sm font-bold mt-1">{p.start} — {p.end}</p>
-            </button>
-          ))}
-          <button
-            onClick={() => setPreset(3)}
-            className={`p-4 border rounded-xl text-left transition border-dashed ${
-              isCustom ? "bg-primary/5 border-primary ring-2 ring-primary" : "border-border"
-            }`}
-          >
-            <p className={`text-[10px] font-bold uppercase ${isCustom ? "text-primary" : "text-muted-foreground"}`}>Custom</p>
-            <p className="font-mono text-sm font-bold mt-1">Definir</p>
-          </button>
-        </div>
-
-        {isCustom && (
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            <div>
-              <Label className="text-xs">Início</Label>
-              <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="font-mono" />
-            </div>
-            <div>
-              <Label className="text-xs">Fim</Label>
-              <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="font-mono" />
-            </div>
-          </div>
-        )}
-
-        <div className="mt-4 space-y-3">
-          <div>
-            <Label className="text-xs">Setor</Label>
-            <Select value={pickedSector ?? ""} onValueChange={(v) => setPickedSector(v || null)}>
-              <SelectTrigger><SelectValue placeholder="Sem setor" /></SelectTrigger>
-              <SelectContent>
-                {sectors.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs">Rótulo (opcional)</Label>
-            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex: João Freelancer" />
-          </div>
-        </div>
-
-        <SheetFooter className="mt-6">
-          <Button
-            className="w-full font-bold tracking-wide"
-            disabled={m.isPending}
-            onClick={() => m.mutate({ start, end })}
-          >
-            {m.isPending ? "Alocando..." : "CONFIRMAR ALOCAÇÃO"}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-function EditShiftDialog({
-  shift, sectors, check, onOpenChange, onSaved,
-}: {
-  shift: any | null;
-  sectors: any[];
-  check: (shift: any, overrides?: Partial<any>) => { violations: Violation[]; configWarnings: string[] };
-  onOpenChange: (o: boolean) => void;
-  onSaved: () => void;
-}) {
-  const [start, setStart] = useState("08:00");
-  const [end, setEnd] = useState("16:00");
-  const [sector, setSector] = useState<string>("");
-  const [label, setLabel] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
-  const updateFn = useServerFn(updateShift);
-  const deleteFn = useServerFn(deleteShift);
-  const clearFn = useServerFn(clearAbsence);
-
-  const save = useMutation({
-    mutationFn: () =>
-      updateFn({
-        data: {
-          id: shift.id,
-          start_time: start,
-          end_time: end,
-          sector_id: sector || null,
-          freelancer_label: shift.is_freelancer ? label || null : undefined,
-        },
-      }),
-    onSuccess: () => { toast.success("Turno atualizado"); onSaved(); onOpenChange(false); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
-  });
-
-  const remove = useMutation({
-    mutationFn: () => deleteFn({ data: { id: shift.id } }),
-    onSuccess: () => { toast.success("Turno excluído"); onSaved(); onOpenChange(false); setConfirmDelete(false); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
-  });
-
-  const revert = useMutation({
-    mutationFn: () => clearFn({ data: { id: shift.id } }),
-    onSuccess: () => { toast.success("Falta desfeita"); onSaved(); onOpenChange(false); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
-  });
-
-  return (
-    <Dialog
-      open={!!shift}
-      onOpenChange={(o: boolean) => {
-        if (!o) { onOpenChange(false); setConfirmDelete(false); }
-        else if (shift) {
-          setStart(trimTime(shift.start_time));
-          setEnd(trimTime(shift.end_time));
-          setSector(shift.sector_id ?? "");
-          setLabel(shift.freelancer_label ?? "");
-        }
-      }}
-    >
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Editar Turno</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs">Entrada</Label>
-              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="font-mono" />
-            </div>
-            <div>
-              <Label className="text-xs">Saída</Label>
-              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="font-mono" />
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs">Setor</Label>
-            <Select value={sector} onValueChange={setSector}>
-              <SelectTrigger><SelectValue placeholder="Sem setor" /></SelectTrigger>
-              <SelectContent>
-                {sectors.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          {shift?.is_freelancer && (
-            <div>
-              <Label className="text-xs">Rótulo</Label>
-              <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex: João Freelancer" />
-            </div>
-          )}
-          {shift && shift.status !== "absent" && (
-            <div className="rounded-lg border border-border bg-secondary/40 p-2.5 space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Conformidade CLT</p>
-              <CltPanel {...check(shift, { start_time: start, end_time: end })} />
-            </div>
-          )}
-          {shift?.status === "absent" && (
-
-            <Button variant="outline" className="w-full" disabled={revert.isPending} onClick={() => revert.mutate()}>
-              <RotateCcw className="size-4 mr-1" /> Desfazer falta
-            </Button>
-          )}
-          {confirmDelete ? (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
-              <p className="text-xs">Excluir este turno permanentemente?</p>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setConfirmDelete(false)}>Cancelar</Button>
-                <Button variant="destructive" className="flex-1" disabled={remove.isPending} onClick={() => remove.mutate()}>
-                  Excluir
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="w-full py-2 text-[11px] font-bold uppercase tracking-wider text-destructive flex items-center justify-center gap-1"
-            >
-              <Trash2 className="size-3.5" /> Excluir turno
-            </button>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>Salvar</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-
-function AbsenceDialog({ shift, onOpenChange, onSaved }: { shift: any | null; onOpenChange: (o: boolean) => void; onSaved: () => void }) {
-  const [reason, setReason] = useState("");
-  const fn = useServerFn(markShiftAbsent);
-  const m = useMutation({
-    mutationFn: () => fn({ data: { id: shift.id, reason: reason || undefined } }),
-    onSuccess: () => { toast.success("Falta registrada"); onSaved(); onOpenChange(false); setReason(""); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
-  });
-  return (
-    <Dialog open={!!shift} onOpenChange={(o) => !o && onOpenChange(false)}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Registrar Falta</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">
-            {shift?.employees?.name ?? "Freelancer"} — {shift && formatDatePt(shift.shift_date)}
-          </p>
-          <Label className="text-xs">Motivo (opcional)</Label>
-          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex: Atestado" />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button variant="destructive" onClick={() => m.mutate()} disabled={m.isPending}>
-            Registrar Falta
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-
-function OverrideDialog({
-  target,
-  onOpenChange,
-  onSaved,
-}: {
-  target: { shift: any; violation: Violation } | null;
-  onOpenChange: (o: boolean) => void;
-  onSaved: () => void;
-}) {
-  const [justification, setJustification] = useState("");
-  const fn = useServerFn(registerOverride);
-  const m = useMutation({
-    mutationFn: () =>
-      fn({ data: { shift_id: target!.shift.id, rule_code: target!.violation.code, justification } }),
-    onSuccess: () => { toast.success("Liberação registrada no log"); setJustification(""); onSaved(); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
-  });
-  return (
-    <Dialog open={!!target} onOpenChange={(o) => !o && onOpenChange(false)}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Liberar alerta</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">{target?.violation.message}</p>
-          <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{target?.violation.basis}</p>
-          <Label className="text-xs">Justificativa (fica registrada no log)</Label>
-          <Input
-            value={justification}
-            onChange={(e) => setJustification(e.target.value)}
-            placeholder="Ex: compensação acordada na sexta-feira"
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button disabled={justification.trim().length < 5 || m.isPending} onClick={() => m.mutate()}>
-            Registrar liberação
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
