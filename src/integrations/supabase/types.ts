@@ -399,7 +399,12 @@ export type Database = {
     Enums: {
       agreement_source: "manual" | "ia"
       holiday_scope: "nacional" | "estadual" | "municipal"
-      role_profile: "clt_regular" | "estagiario" | "clt_mulher"
+      role_profile:
+        | "clt_regular"
+        | "estagiario"
+        | "clt_mulher"
+        | "pj"
+        | "escala_12x36"
       shift_status: "scheduled" | "absent" | "completed"
       work_regime:
         | "padrao_5x2"
@@ -538,7 +543,13 @@ export const Constants = {
     Enums: {
       agreement_source: ["manual", "ia"],
       holiday_scope: ["nacional", "estadual", "municipal"],
-      role_profile: ["clt_regular", "estagiario", "clt_mulher"],
+      role_profile: [
+        "clt_regular",
+        "estagiario",
+        "clt_mulher",
+        "pj",
+        "escala_12x36",
+      ],
       shift_status: ["scheduled", "absent", "completed"],
       work_regime: [
         "padrao_5x2",
