@@ -7,6 +7,7 @@ import { Sparkles, Loader2, UserCheck } from "lucide-react";
 import { suggestCoverage } from "@/lib/coverage.functions";
 import { createShift } from "@/lib/shifts.functions";
 import { CltPanel } from "@/components/CltBadge";
+import { COMPLIANCE_DISCLAIMER } from "@/lib/clt-rules";
 import { trimTime } from "@/lib/date-utils";
 
 export function CoverageSheet({
@@ -62,7 +63,7 @@ export function CoverageSheet({
           </SheetTitle>
           <SheetDescription>
             {shift && `${trimTime(shift.start_time)} — ${trimTime(shift.end_time)}`}
-            {shift?.sectors?.name ? ` • ${shift.sectors.name}` : ""} — candidatos filtrados pelas regras da CLT.
+            {shift?.sectors?.name ? ` • ${shift.sectors.name}` : ""} — candidatos filtrados pelas normas aplicáveis (federal, convenção e acordo).
           </SheetDescription>
         </SheetHeader>
 
@@ -102,7 +103,7 @@ export function CoverageSheet({
                         </Button>
                       </div>
                       <p className="text-[11px] text-muted-foreground">{r.reason}</p>
-                      {c.violations.length > 0 && <CltPanel violations={c.violations} />}
+                      {c.violations.length > 0 && <CltPanel violations={c.violations} showDisclaimer={false} />}
                     </div>
                   );
                 })}
@@ -134,10 +135,14 @@ export function CoverageSheet({
                         {c.blocked ? "Bloqueado" : "Alocar"}
                       </Button>
                     </div>
-                    {c.violations.length > 0 && <CltPanel violations={c.violations} />}
+                    {c.violations.length > 0 && <CltPanel violations={c.violations} showDisclaimer={false} />}
                   </div>
                 ))}
               </div>
+            )}
+
+            {candidates.length > 0 && (
+              <p className="text-[9px] leading-snug text-muted-foreground/70">{COMPLIANCE_DISCLAIMER}</p>
             )}
 
             {!candidates.length && (

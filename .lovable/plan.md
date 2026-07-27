@@ -1,93 +1,80 @@
+## O problema
 
-# EscalaPro OS — Build Plan
+Hoje `src/lib/clt-rules.ts` tem os limites cravados no código (44h, 11h, 6h estagiário, 2h extras). Isso funciona como demonstração, mas quebra na vida real porque:
 
-Sistema operacional de escala de turnos (pt-BR), mobile-first (390px), com backend Lovable Cloud e OCR de escalas em papel via IA.
+- **CCT/ACT sobrepõem a CLT** em jornada, intervalo, adicional noturno e banco de horas. Cada sindicato/categoria/base territorial tem números diferentes.
+- **Escalas especiais** (12x36, 6x1, 5x2, 24x72, escala espanhola) mudam a própria lógica: 12x36 é legal mesmo estourando 8h/dia, mas exige acordo e 36h de descanso.
+- **Município/Estado** entram sobretudo em feriados locais e leis de funcionamento (comércio aos domingos), não em jornada.
+- Regra errada exibida com cara de autoridade é pior que nenhuma regra: gera decisão jurídica equivocada.
 
-## Design
+## Estratégia: motor de regras dirigido por dados, não por código
 
-Direção escolhida: **Dispatcher command** (fundo `#f8f8f8`, primary laranja `#ea580c`, foreground `#09090b`, fontes Inter + JetBrains Mono para números/horários, cantos arredondados suaves, KPIs com borda lateral colorida, bottom sheet com slide-up animation).
+Três camadas, da mais genérica à mais específica, aplicadas em cascata — a mais específica vence:
 
-Tokens vão para `src/styles.css` no formato oklch; layout, densidade, hierarquia e microcopy seguem o protótipo fielmente.
+```text
+  BASE FEDERAL (CLT)         imutável, versionada, embarcada no app
+        ↓ sobrescreve
+  CONVENÇÃO (CCT/ACT)        por categoria + base territorial + vigência
+        ↓ sobrescreve
+  ACORDO INDIVIDUAL/ESCALA   12x36, banco de horas, compensação
+```
 
-## Escopo funcional
+Cada colaborador aponta para um **perfil de jornada** (regime + convenção). O motor resolve os parâmetros efetivos antes de avaliar e sempre diz **de onde veio cada número**.
 
-1. **Feed Diário** — setor selector (chips), toggle Feed/Planilha, KPIs (Ativos/Faltas/Extras), cards de colaborador com bloco de horário mono, ações Falta/Ajustar, botão flutuante "+ Freelancer".
-2. **Planilha Semanal** — matriz colaboradores × 7 dias, scroll horizontal, primeira coluna fixa, células com bloco de turno colorido.
-3. **Escanear Escala (Vision Engine)** — upload de foto → OCR com Lovable AI (Gemini vision) → extrai colaboradores + turnos → tela de revisão → grava em massa na semana.
-4. **Injetar Freelancer** — bottom sheet com chips Manhã/Tarde/Noite/Personalizado, escolha de setor, confirmar cria shift `is_freelancer=true` no dia.
-5. **Configurações** — CRUD de setores; cadastro de funcionários CLT (nome, perfil regulador CLTRegular/Estagiario/CLTMulher, entrada, jornada, setor).
-6. **Registrar Falta / Ajustar Bloco** — modais para marcar ausência do dia e editar horário de um turno.
-7. **Log de alterações** — lista simples de eventos recentes.
+### Parâmetros que saem do código e viram dados
 
-Autenticação por email/senha (Cloud). Cada workspace = 1 usuário owner por enquanto (multi-tenant fica para depois).
+Jornada diária e semanal, teto de horas extras, intervalo intrajornada (duração e faixa de disparo), interjornada, descanso semanal, regime de escala (5x2 / 6x1 / 12x36 / 24x72), janela noturna e hora reduzida, dias de feriado aplicáveis.
 
-## Backend (Lovable Cloud)
+### Regime de escala como estratégia própria
 
-Schema:
-- `profiles(id, email, display_name)`
-- `sectors(id, owner_id, name, created_at)`
-- `employees(id, owner_id, sector_id, name, role_profile enum, entry_time, journey_hours, created_at)` — `role_profile` = `clt_regular | estagiario | clt_mulher`
-- `shifts(id, owner_id, employee_id nullable, sector_id, shift_date, start_time, end_time, is_freelancer, is_extra, status enum(scheduled|absent|completed))`
-- `absences(id, owner_id, employee_id, absence_date, reason)`
-- `activity_log(id, owner_id, event_type, payload jsonb, created_at)`
+O regime deixa de ser detalhe e passa a escolher qual conjunto de checagens roda:
 
-RLS em todas: `owner_id = auth.uid()`. GRANTs para `authenticated` + `service_role`. Estrutura `_authenticated/` para rotas protegidas.
+- **Padrão (5x2 / 6x1)**: regras atuais.
+- **12x36**: jornada de 12h é esperada; valida 36h de descanso subsequente, exige flag de acordo escrito, não acusa hora extra por passar de 8h.
+- **Estágio**: 6h/dia, 30h/semana, veto a noturno, 4h em dia de prova.
+- **Jornada parcial / intermitente**: tetos próprios.
 
-Server functions (`src/lib/*.functions.ts`):
-- `sectors.functions.ts` — list/create/delete
-- `employees.functions.ts` — list/create/update/delete
-- `shifts.functions.ts` — listByDay(sector, date), listByWeek(weekStart), createFreelancer, updateBlock, markAbsent
-- `activity.functions.ts` — list recent
-- `scan.functions.ts` — `scanSchedule({ imageBase64, mimeType })` → chama Lovable AI Gateway (google/gemini-3.1-flash-image ou modelo de visão chat) com prompt estruturado + `Output.object` retornando `{ employees: [{ name, days: [{ date, start, end }] }] }`. Retorna rascunho para o cliente revisar antes de gravar.
-- `scan.functions.ts::applyScan` — grava shifts em batch após revisão.
+## Segurança: como errar menos
 
-Todas com `.middleware([requireSupabaseAuth])`.
+1. **Severidade honesta.** Três níveis com significado jurídico distinto: `bloqueio` (violação de norma federal cogente — nunca sobrescrevível), `atenção` (depende de acordo/convenção — pode ser liberado com justificativa registrada), `informativo` (boa prática).
+2. **Citação obrigatória.** Toda violação carrega base legal (`CLT art. 66`, `CCT SINDICATO X 2025/2026 cláusula 12`) e a fonte do parâmetro. Sem fonte, a regra não é exibida como violação.
+3. **Aviso de escopo.** Rodapé permanente no painel CLT: verificação automatizada de apoio, não substitui parecer jurídico nem a convenção vigente. Isso protege você e o usuário.
+4. **Override auditado.** Quando o gestor libera um `atenção`, grava-se quem, quando e por quê em `activity_log`. Vira prova de diligência.
+5. **Vigência.** Convenção tem data de início e fim; ao vencer, o app avisa em vez de continuar validando com números velhos.
+6. **Testes como rede.** Suíte de casos por regime (12x36 legal, 12x36 sem descanso, 6x1 com 7º dia, estagiário noturno, semana de 44h exata, virada de meia-noite) rodando a cada mudança no motor. É o que impede regressão silenciosa.
 
-## Rotas
+## Eficiência
 
-- `/auth` — login/signup (público)
-- `/_authenticated/route.tsx` — gate integrado
-- `/_authenticated/index.tsx` — redireciona para `/feed`
-- `/_authenticated/feed.tsx` — Feed Diário
-- `/_authenticated/semana.tsx` — Planilha Semanal
-- `/_authenticated/escanear.tsx` — Vision Engine (upload + revisão)
-- `/_authenticated/configuracoes.tsx` — Setores + Funcionários
-- `/_authenticated/atividade.tsx` — Log
+- Motor puro, sem I/O, roda igual no cliente (feedback instantâneo ao editar turno) e no servidor (filtro de candidatos à cobertura). Já é assim — preservar.
+- Avaliação por colaborador/semana, com os turnos da semana carregados uma vez e reaproveitados (o feed já faz isso).
+- Parâmetros resolvidos uma vez por avaliação, não por regra.
 
-Rota `/` continua sendo o entry — vou reescrevê-la para redirecionar para `/feed` (autenticado) ou `/auth`.
+## Como a convenção entra no app (sem virar trabalho de digitação)
 
-## Arquivos-chave
+Faseado:
 
-- `src/styles.css` — tokens Dispatcher (background/foreground/primary/border, JetBrains Mono via `<link>` no `__root.tsx`)
-- `src/routes/__root.tsx` — atualizar meta (title "EscalaPro OS", description pt-BR), links de fontes, remover placeholder
-- `src/routes/index.tsx` — reescrever como redirect
-- `src/components/`:
-  - `SectorChips.tsx`, `ViewToggle.tsx`, `KpiTrio.tsx`
-  - `EmployeeShiftCard.tsx`, `WeeklyMatrix.tsx`
-  - `FreelancerSheet.tsx`, `AbsenceSheet.tsx`, `AdjustBlockSheet.tsx`
-  - `SectorForm.tsx`, `EmployeeForm.tsx`
-  - `ScanUploader.tsx`, `ScanReview.tsx`
-- Server functions em `src/lib/`
-- Migração inicial (`GRANT` + RLS + policies)
+- **Fase 1** — base federal versionada + regimes de escala + campo de perfil de jornada por colaborador. Cobre a maior parte dos casos e já elimina os falsos positivos de 12x36.
+- **Fase 2** — cadastro manual de convenção em Configurações: formulário curto com os parâmetros que mais variam, com vigência. Gestor preenche uma vez.
+- **Fase 3** — importar a CCT em PDF e deixar a IA (mesmo gateway do scan de escala) extrair os parâmetros, apresentando cada valor para confirmação humana antes de salvar. Nada entra no motor sem o gestor confirmar.
 
-## OCR (Vision Engine)
+Feriados: tabela nacional embarcada + cadastro de feriados estaduais/municipais por operação (poucas linhas por ano).
 
-Modelo: `google/gemini-3.5-flash` (chat + vision, mais recente e barato para OCR).
-Fluxo: usuário tira foto → `<img>` convertida para base64 no cliente → `useServerFn(scanSchedule)({ data: { imageBase64, mimeType, weekStart } })` → handler monta mensagem com `image_url` (data URL), `Output.object` com schema Zod estrito de `{ employees: [...] }` → devolve rascunho → tela de revisão permite ajustar nomes/horários e mapear para funcionários existentes → `applyScan` grava.
+## Detalhes técnicos
 
-Tratamento: 429 → toast pedindo retry; 402 → toast pedindo créditos.
+**Banco**
+- `compliance_profiles` — regime, referência à convenção, parâmetros efetivos.
+- `agreements` — convenção/acordo: nome, sindicato, base territorial, vigência, parâmetros em `jsonb`, origem (manual/IA) e status de confirmação.
+- `holidays` — data, âmbito (nacional/estadual/municipal), UF/município.
+- `compliance_overrides` — turno, código da regra, justificativa, autor, timestamp.
+- `employees` ganha `compliance_profile_id`.
+- RLS por `owner_id` em todas, com GRANT explícito.
 
-## Notas técnicas
+**Código**
+- `src/lib/clt/params.ts` — tipo `ComplianceParams` + defaults federais versionados (`FEDERAL_2026`).
+- `src/lib/clt/resolve.ts` — cascata federal → convenção → perfil, devolvendo valor + procedência.
+- `src/lib/clt/regimes/*.ts` — uma estratégia por regime, exportando as checagens aplicáveis.
+- `src/lib/clt-rules.ts` — vira orquestrador: resolve parâmetros, escolhe regime, roda checagens, devolve `Violation[]` agora com `basis` e `source`.
+- `src/lib/clt/__tests__/` — suíte por regime.
+- `Violation` ganha `basis: string` e `source: "federal" | "convencao" | "acordo"`; `CltBadge`/`CltPanel` exibem a citação; `CoverageSheet` só bloqueia em `error` de origem federal.
 
-- `LOVABLE_API_KEY` já vem via Cloud (verifico via `ai_gateway--create`).
-- `attachSupabaseAuth` middleware registrado em `src/start.ts` para bearer nas server functions.
-- Todos os textos de UI em pt-BR.
-- Sem service worker, sem PWA, sem multi-tenant além do owner_id nesta versão.
-- Log de atividade gravado a cada mutação (via helper server-side).
-
-## Fora do escopo desta iteração
-
-- Multi-usuário por workspace / convites
-- Notificações push
-- Cálculo automático de horas extras / regras CLT complexas (o `role_profile` só marca, não valida ainda)
-- Exportação PDF
+**Compatibilidade**: colaborador sem perfil cai no padrão federal atual — nada quebra durante a migração.

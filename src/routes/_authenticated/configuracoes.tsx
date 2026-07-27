@@ -14,6 +14,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { listSectors, createSector, deleteSector } from "@/lib/sectors.functions";
 import { listEmployees, createEmployee, deleteEmployee } from "@/lib/employees.functions";
 import { ROLE_LABELS } from "@/lib/date-utils";
+import { ComplianceSettings } from "@/components/ComplianceSettings";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — EscalaPro OS" }, { name: "description", content: "Setores e cadastro de colaboradores." }] }),
@@ -63,7 +64,7 @@ function SettingsPage() {
     <AppShell>
       <div className="px-4 pt-4 pb-2">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Configurações Operacionais</p>
-        <h1 className="text-lg font-bold">Setores e Colaboradores</h1>
+        <h1 className="text-lg font-bold">Setores, Colaboradores e Conformidade</h1>
       </div>
 
       <section className="px-4 mt-4">
@@ -150,6 +151,8 @@ function SettingsPage() {
           ))}
         </div>
       </section>
+
+      <ComplianceSettings />
 
       <section className="px-4 mt-8">
         <Button
