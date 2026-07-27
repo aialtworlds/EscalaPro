@@ -104,6 +104,7 @@ export function ComplianceSettings() {
   const delProfileFn = useServerFn(deleteComplianceProfile);
   const setEmpProfileFn = useServerFn(setEmployeeProfile);
   const holidaysFn = useServerFn(listHolidays);
+  const empsFn = useServerFn(listEmployees);
   const createHolidayFn = useServerFn(createHoliday);
   const importHolidaysFn = useServerFn(importNationalHolidays);
   const delHolidayFn = useServerFn(deleteHoliday);
@@ -111,11 +112,7 @@ export function ComplianceSettings() {
   const agreements = useQuery({ queryKey: ["agreements"], queryFn: () => agreementsFn() });
   const profiles = useQuery({ queryKey: ["compliance-profiles"], queryFn: () => profilesFn() });
   const holidays = useQuery({ queryKey: ["holidays"], queryFn: () => holidaysFn() });
-  const employees = useQuery({ queryKey: ["employees"], queryFn: () => useServerFnEmployees() });
-  const empsFn = useServerFn(listEmployees);
-  function useServerFnEmployees() {
-    return empsFn();
-  }
+  const employees = useQuery({ queryKey: ["employees"], queryFn: () => empsFn() });
 
   // ------------------------------------------------------------- convenções
   const [agr, setAgr] = useState({
