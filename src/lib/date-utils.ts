@@ -1,35 +1,64 @@
-// Utility helpers for date/time formatting in pt-BR.
+// Datas e horários em pt-BR.
+//
+// Regra de ouro: nunca depender do relógio local do processo. O worker roda em
+// UTC, então "hoje" precisa ser derivado explicitamente do fuso da operação
+// (America/Sao_Paulo) — caso contrário, às 21h BRT o app já viraria o dia.
+// Toda a aritmética de datas é feita em UTC sobre ISO puro (YYYY-MM-DD), o que
+// também imuniza contra horário de verão.
+
+export const APP_TZ = "America/Sao_Paulo";
+
 export const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
 export const WEEKDAY_FULL = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"] as const;
 
-export function todayISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const ISO_FMT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: APP_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** Data de hoje no fuso da operação, em ISO (YYYY-MM-DD). */
+export function todayISO(now: Date = new Date()): string {
+  return ISO_FMT.format(now); // en-CA já formata como YYYY-MM-DD
 }
 
+/** Ano corrente no fuso da operação. */
+export function currentYear(now: Date = new Date()): number {
+  return Number(todayISO(now).slice(0, 4));
+}
+
+/** Date em UTC representando o dia civil — usado só para cálculo, nunca para exibir hora. */
 export function isoToDate(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+const toISO = (d: Date): string =>
+  `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+
+/** Índice do dia da semana (0=Dom) do dia civil informado. */
+export function weekdayOf(iso: string): number {
+  return isoToDate(iso).getUTCDay();
 }
 
 export function formatDatePt(iso: string): string {
   const d = isoToDate(iso);
-  return `${WEEKDAY_FULL[d.getDay()]}, ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return `${WEEKDAY_FULL[d.getUTCDay()]}, ${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-// Monday of the week containing the given ISO date (returns ISO string).
+/** Segunda-feira da semana que contém a data informada. */
 export function mondayOf(iso: string): string {
   const d = isoToDate(iso);
-  const day = d.getDay(); // 0=Sun
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const day = d.getUTCDay(); // 0=Dom
+  d.setUTCDate(d.getUTCDate() + (day === 0 ? -6 : 1 - day));
+  return toISO(d);
 }
 
 export function addDays(iso: string, days: number): string {
   const d = isoToDate(iso);
-  d.setDate(d.getDate() + days);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  d.setUTCDate(d.getUTCDate() + days);
+  return toISO(d);
 }
 
 export function trimTime(t: string): string {
