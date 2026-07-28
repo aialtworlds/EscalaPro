@@ -31,7 +31,7 @@ function AuthPage() {
   const navigate = useNavigate();
   const { next } = Route.useSearch();
   const target = safeNext(next);
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -47,7 +47,14 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === "signup") {
+      if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast.success("Se o e-mail existir, enviamos um link de recuperação.");
+        setMode("signin");
+      } else if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -115,7 +122,7 @@ function AuthPage() {
             <div className="mt-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-                {mode === "signin" ? "Autenticação" : "Novo operador"}
+                {mode === "signin" ? "Autenticação" : mode === "signup" ? "Novo operador" : "Recuperar acesso"}
               </p>
             </div>
           </div>
@@ -151,6 +158,7 @@ function AuthPage() {
                 className="h-12 rounded-none border-0 border-b border-border bg-transparent px-0 text-base focus-visible:border-primary focus-visible:ring-0"
               />
             </div>
+            {mode !== "forgot" && (
             <div className="space-y-1.5">
               <Label htmlFor="password" className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 Senha
@@ -167,13 +175,20 @@ function AuthPage() {
                 className="h-12 rounded-none border-0 border-b border-border bg-transparent px-0 text-base focus-visible:border-primary focus-visible:ring-0"
               />
             </div>
+            )}
 
             <Button
               type="submit"
               disabled={loading}
               className="mt-6 h-14 w-full rounded-none font-mono text-xs uppercase tracking-[0.3em]"
             >
-              {loading ? "Processando..." : mode === "signin" ? "Entrar no console →" : "Criar operador →"}
+              {loading
+                ? "Processando..."
+                : mode === "signin"
+                  ? "Entrar no console →"
+                  : mode === "signup"
+                    ? "Criar operador →"
+                    : "Enviar link de recuperação →"}
             </Button>
 
             <button
@@ -182,6 +197,14 @@ function AuthPage() {
               className="w-full pt-2 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition"
             >
               {mode === "signin" ? "Sem acesso? Cadastrar operador" : "Já tenho acesso · Entrar"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMode(mode === "forgot" ? "signin" : "forgot")}
+              className="w-full font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition"
+            >
+              {mode === "forgot" ? "Voltar ao login" : "Esqueci minha senha"}
             </button>
           </form>
         </div>
