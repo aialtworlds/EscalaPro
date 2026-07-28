@@ -206,6 +206,97 @@ export type Database = {
           },
         ]
       }
+      demand_templates: {
+        Row: {
+          created_at: string
+          end_time: string
+          headcount: number
+          id: string
+          owner_id: string
+          sector_id: string | null
+          start_time: string
+          weekday: number
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          headcount?: number
+          id?: string
+          owner_id: string
+          sector_id?: string | null
+          start_time: string
+          weekday: number
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          headcount?: number
+          id?: string
+          owner_id?: string
+          sector_id?: string | null
+          start_time?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demand_templates_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_constraints: {
+        Row: {
+          created_at: string
+          employee_id: string
+          end_date: string | null
+          end_time: string | null
+          id: string
+          kind: Database["public"]["Enums"]["constraint_kind"]
+          note: string | null
+          owner_id: string
+          start_date: string | null
+          start_time: string | null
+          weekday: number | null
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          end_date?: string | null
+          end_time?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["constraint_kind"]
+          note?: string | null
+          owner_id: string
+          start_date?: string | null
+          start_time?: string | null
+          weekday?: number | null
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          end_date?: string | null
+          end_time?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["constraint_kind"]
+          note?: string | null
+          owner_id?: string
+          start_date?: string | null
+          start_time?: string | null
+          weekday?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_constraints_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           compliance_profile_id: string | null
@@ -308,6 +399,60 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_shares: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          owner_id: string
+          token: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          owner_id: string
+          token: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          owner_id?: string
+          token?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
+      schedule_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          owner_id: string
+          payload: Json
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          owner_id: string
+          payload?: Json
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          owner_id?: string
+          payload?: Json
+          week_start?: string
+        }
+        Relationships: []
+      }
       sectors: {
         Row: {
           created_at: string
@@ -398,6 +543,7 @@ export type Database = {
     }
     Enums: {
       agreement_source: "manual" | "ia"
+      constraint_kind: "indisponivel_semanal" | "afastamento"
       holiday_scope: "nacional" | "estadual" | "municipal"
       role_profile:
         | "clt_regular"
@@ -542,6 +688,7 @@ export const Constants = {
   public: {
     Enums: {
       agreement_source: ["manual", "ia"],
+      constraint_kind: ["indisponivel_semanal", "afastamento"],
       holiday_scope: ["nacional", "estadual", "municipal"],
       role_profile: [
         "clt_regular",

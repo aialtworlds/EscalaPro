@@ -15,6 +15,8 @@ import { listSectors, createSector, deleteSector } from "@/lib/sectors.functions
 import { listEmployees, createEmployee, deleteEmployee } from "@/lib/employees.functions";
 import { ROLE_LABELS } from "@/lib/date-utils";
 import { ComplianceSettings } from "@/components/ComplianceSettings";
+import { ConstraintsSettings } from "@/components/ConstraintsSettings";
+import { DemandSettings } from "@/components/DemandSettings";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — EscalaPro OS" }, { name: "description", content: "Setores e cadastro de colaboradores." }] }),
@@ -155,6 +157,10 @@ function SettingsPage() {
       </section>
 
       <ComplianceSettings />
+
+      <ConstraintsSettings />
+
+      <DemandSettings />
 
       <section className="px-4 mt-8">
         <Button

@@ -232,6 +232,9 @@ export const duplicateWeek = createServerFn({ method: "POST" })
 
     if (target?.length) {
       if (!data.overwrite) throw new Error("A semana de destino já tem turnos. Marque 'substituir' para sobrescrever.");
+      // Ponto de restauração antes de apagar a semana de destino.
+      const { snapshotWeek } = await import("@/lib/snapshots.server");
+      await snapshotWeek(context.supabase, context.userId, data.to_week, "Antes de duplicar");
       const { error: e3 } = await context.supabase
         .from("shifts")
         .delete()
