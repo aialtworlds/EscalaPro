@@ -120,10 +120,21 @@ function ResetPasswordPage() {
         </h1>
 
         {!ready ? (
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Abra esta página pelo link enviado no seu e-mail.
-          </p>
+          <div className="space-y-4">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              {linkError ?? "Abra esta página pelo link enviado no seu e-mail."}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate({ to: "/auth" })}
+              className="h-12 w-full rounded-none font-mono text-[11px] uppercase tracking-[0.3em]"
+            >
+              Pedir novo link →
+            </Button>
+          </div>
         ) : (
+
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="new-password" className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
