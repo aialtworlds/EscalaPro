@@ -24,6 +24,9 @@ export const Route = createFileRoute("/_authenticated/semana")({
 function SemanaPage() {
   const [weekStart, setWeekStart] = useState(mondayOf(todayISO()));
   const [dupOpen, setDupOpen] = useState(false);
+  const [autoOpen, setAutoOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [histOpen, setHistOpen] = useState(false);
   const shiftsFn = useServerFn(listShiftsByWeek);
   const empsFn = useServerFn(listEmployees);
   const shifts = useQuery({ queryKey: ["shifts", "week", weekStart], queryFn: () => shiftsFn({ data: { week_start: weekStart } }) });
