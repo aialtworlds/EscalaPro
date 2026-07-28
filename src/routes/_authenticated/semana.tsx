@@ -188,6 +188,9 @@ function SemanaPage() {
       </div>
 
       <DuplicateWeekDialog open={dupOpen} onOpenChange={setDupOpen} weekStart={weekStart} />
+      <AutofillDialog open={autoOpen} onOpenChange={setAutoOpen} weekStart={weekStart} />
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} weekStart={weekStart} />
+      <HistoryDialog open={histOpen} onOpenChange={setHistOpen} weekStart={weekStart} />
     </AppShell>
   );
 }
