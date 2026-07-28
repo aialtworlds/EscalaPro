@@ -82,10 +82,6 @@ function SemanaPage() {
             </Button>
           </div>
         </div>
-        <div className="flex gap-2 mt-3 print:hidden">
-          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => setDupOpen(true)}>
-            <Copy className="size-3.5 mr-1" /> Duplicar
-          </Button>
         <div className="mt-3 print:hidden">
           <Button size="sm" className="w-full text-xs font-bold" onClick={() => setAutoOpen(true)}>
             <Wand2 className="size-3.5 mr-1.5" /> Gerar escala automática
