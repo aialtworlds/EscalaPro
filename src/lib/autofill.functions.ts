@@ -101,3 +101,52 @@ export const autofillWeek = createServerFn({ method: "POST" })
       gaps: plan.gaps,
     };
   });
+
+const planRow = z.object({
+  employee_id: z.string().uuid(),
+  sector_id: z.string().uuid().nullable().default(null),
+  shift_date: iso,
+  start_time: z.string(),
+  end_time: z.string(),
+});
+
+const applyInput = z.object({
+  week_start: iso,
+  replace: z.boolean().default(false),
+  rows: z.array(planRow),
+});
+
+/** Grava um plano já revisado/ajustado manualmente pelo gestor. */
+export const applyWeekPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => applyInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase;
+    const end = addDays(data.week_start, 7);
+
+    const { snapshotWeek } = await import("@/lib/snapshots.server");
+    await snapshotWeek(sb, context.userId, data.week_start, data.replace ? "Antes de regerar" : "Antes de completar");
+
+    if (data.replace) {
+      const { error } = await sb
+        .from("shifts")
+        .delete()
+        .gte("shift_date", data.week_start)
+        .lt("shift_date", end);
+      if (error) throw new Error(error.message);
+    }
+
+    if (data.rows.length) {
+      const rows = data.rows.map((r) => ({ ...r, owner_id: context.userId }));
+      const { error } = await sb.from("shifts").insert(rows);
+      if (error) throw new Error(error.message);
+    }
+
+    await sb.from("activity_log").insert({
+      owner_id: context.userId,
+      event_type: "week.autofilled",
+      payload: { week: data.week_start, count: data.rows.length, manual_review: true },
+    });
+
+    return { inserted: data.rows.length };
+  });
