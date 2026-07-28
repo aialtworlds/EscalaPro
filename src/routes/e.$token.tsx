@@ -35,7 +35,7 @@ function SharedWeekPage() {
     );
   }
 
-  const weekStart = q.data.week_start;
+  const { week_start: weekStart, shifts } = q.data;
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const label = `${weekStart.slice(8, 10)}/${weekStart.slice(5, 7)} — ${days[6].slice(8, 10)}/${days[6].slice(5, 7)}`;
 
@@ -49,7 +49,7 @@ function SharedWeekPage() {
 
       <div className="px-4 py-4 space-y-5 max-w-xl mx-auto">
         {days.map((d, i) => {
-          const rows = q.data.shifts.filter((s) => s.shift_date === d);
+          const rows = shifts.filter((s) => s.shift_date === d);
           return (
             <section key={d}>
               <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-2">
