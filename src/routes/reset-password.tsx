@@ -21,6 +21,7 @@ export const Route = createFileRoute("/reset-password")({
 function ResetPasswordPage() {
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,11 +30,61 @@ function ResetPasswordPage() {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
     });
-    supabase.auth.getSession().then(({ data }) => {
+
+    (async () => {
+      const url = new URL(window.location.href);
+      const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
+      const q = url.searchParams;
+
+      const errDesc = hash.get("error_description") || q.get("error_description");
+      if (errDesc) {
+        setLinkError(
+          decodeURIComponent(errDesc).includes("expired")
+            ? "O link expirou. Peça um novo em 'Esqueci minha senha'."
+            : "Link inválido ou já utilizado. Peça um novo em 'Esqueci minha senha'.",
+        );
+        return;
+      }
+
+      const access_token = hash.get("access_token");
+      const refresh_token = hash.get("refresh_token");
+      if (access_token && refresh_token) {
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (!error) {
+          setReady(true);
+          window.history.replaceState({}, "", url.pathname);
+          return;
+        }
+      }
+
+      const token_hash = q.get("token_hash") || hash.get("token_hash");
+      const code = q.get("code");
+      if (token_hash) {
+        const { error } = await supabase.auth.verifyOtp({ type: "recovery", token_hash });
+        if (!error) {
+          setReady(true);
+          window.history.replaceState({}, "", url.pathname);
+          return;
+        }
+        setLinkError("Link inválido ou já utilizado. Peça um novo em 'Esqueci minha senha'.");
+        return;
+      }
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error) {
+          setReady(true);
+          window.history.replaceState({}, "", url.pathname);
+          return;
+        }
+      }
+
+      const { data } = await supabase.auth.getSession();
       if (data.session) setReady(true);
-    });
+    })();
+
     return () => sub.subscription.unsubscribe();
   }, []);
+
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -69,10 +120,21 @@ function ResetPasswordPage() {
         </h1>
 
         {!ready ? (
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Abra esta página pelo link enviado no seu e-mail.
-          </p>
+          <div className="space-y-4">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              {linkError ?? "Abra esta página pelo link enviado no seu e-mail."}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate({ to: "/auth" })}
+              className="h-12 w-full rounded-none font-mono text-[11px] uppercase tracking-[0.3em]"
+            >
+              Pedir novo link →
+            </Button>
+          </div>
         ) : (
+
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="new-password" className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
