@@ -86,14 +86,31 @@ function SemanaPage() {
           <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => setDupOpen(true)}>
             <Copy className="size-3.5 mr-1" /> Duplicar
           </Button>
-          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={exportCsv}>
+        <div className="mt-3 print:hidden">
+          <Button size="sm" className="w-full text-xs font-bold" onClick={() => setAutoOpen(true)}>
+            <Wand2 className="size-3.5 mr-1.5" /> Gerar escala automática
+          </Button>
+        </div>
+        <div className="grid grid-cols-3 gap-2 mt-2 print:hidden">
+          <Button size="sm" variant="outline" className="text-xs" onClick={() => setDupOpen(true)}>
+            <Copy className="size-3.5 mr-1" /> Duplicar
+          </Button>
+          <Button size="sm" variant="outline" className="text-xs" onClick={() => setShareOpen(true)}>
+            <Share2 className="size-3.5 mr-1" /> Enviar
+          </Button>
+          <Button size="sm" variant="outline" className="text-xs" onClick={() => setHistOpen(true)}>
+            <History className="size-3.5 mr-1" /> Histórico
+          </Button>
+          <Button size="sm" variant="outline" className="text-xs" onClick={exportCsv}>
             <Download className="size-3.5 mr-1" /> CSV
           </Button>
-          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => window.print()}>
+          <Button size="sm" variant="outline" className="text-xs" onClick={() => window.print()}>
             <Printer className="size-3.5 mr-1" /> PDF
           </Button>
         </div>
       </div>
+
+
 
 
       <div className="px-4">
