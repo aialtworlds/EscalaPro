@@ -11,7 +11,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { listShiftsByWeek, duplicateWeek } from "@/lib/shifts.functions";
 import { listEmployees } from "@/lib/employees.functions";
 import { mondayOf, addDays, todayISO, WEEKDAY_LABELS, trimTime } from "@/lib/date-utils";
-import { ChevronLeft, ChevronRight, Copy, Download, Printer } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Download, Printer, Share2, History, Wand2 } from "lucide-react";
+import { AutofillDialog } from "@/components/week/AutofillDialog";
+import { ShareDialog } from "@/components/week/ShareDialog";
+import { HistoryDialog } from "@/components/week/HistoryDialog";
 
 export const Route = createFileRoute("/_authenticated/semana")({
   head: () => ({ meta: [{ title: "Planilha Semanal — EscalaPro OS" }, { name: "description", content: "Matriz semanal de escala." }] }),
