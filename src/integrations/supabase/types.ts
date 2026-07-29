@@ -212,8 +212,10 @@ export type Database = {
           end_time: string
           headcount: number
           id: string
+          label: string | null
           owner_id: string
           sector_id: string | null
+          sector_only: boolean
           start_time: string
           weekday: number
         }
@@ -222,8 +224,10 @@ export type Database = {
           end_time: string
           headcount?: number
           id?: string
+          label?: string | null
           owner_id: string
           sector_id?: string | null
+          sector_only?: boolean
           start_time: string
           weekday: number
         }
@@ -232,8 +236,10 @@ export type Database = {
           end_time?: string
           headcount?: number
           id?: string
+          label?: string | null
           owner_id?: string
           sector_id?: string | null
+          sector_only?: boolean
           start_time?: string
           weekday?: number
         }
