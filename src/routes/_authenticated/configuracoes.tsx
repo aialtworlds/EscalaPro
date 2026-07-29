@@ -6,17 +6,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, LogOut } from "lucide-react";
+import { Trash2, LogOut, Pencil, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
-import { listSectors, createSector, deleteSector } from "@/lib/sectors.functions";
-import { listEmployees, createEmployee, deleteEmployee } from "@/lib/employees.functions";
-import { ROLE_LABELS } from "@/lib/date-utils";
+import { listSectors, createSector, updateSector, deleteSector } from "@/lib/sectors.functions";
+import { listEmployees, deleteEmployee } from "@/lib/employees.functions";
+import { ROLE_LABELS, hoursToHHMM } from "@/lib/date-utils";
 import { ComplianceSettings } from "@/components/ComplianceSettings";
 import { ConstraintsSettings } from "@/components/ConstraintsSettings";
 import { DemandSettings } from "@/components/DemandSettings";
+import {
+  EmployeeDialog, emptyEmployee, draftFromRow, type EmployeeDraft,
+} from "@/components/settings/EmployeeDialog";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — EscalaPro OS" }, { name: "description", content: "Setores e cadastro de colaboradores." }] }),
@@ -29,38 +30,43 @@ function SettingsPage() {
   const sectorsFn = useServerFn(listSectors);
   const empsFn = useServerFn(listEmployees);
   const createSectorFn = useServerFn(createSector);
+  const updateSectorFn = useServerFn(updateSector);
   const deleteSectorFn = useServerFn(deleteSector);
-  const createEmpFn = useServerFn(createEmployee);
   const deleteEmpFn = useServerFn(deleteEmployee);
 
   const sectors = useQuery({ queryKey: ["sectors"], queryFn: () => sectorsFn() });
   const employees = useQuery({ queryKey: ["employees"], queryFn: () => empsFn() });
 
   const [newSector, setNewSector] = useState("");
-  const [emp, setEmp] = useState({ name: "", role_profile: "clt_regular" as const, entry_time: "08:00", journey_hours: 8, sector_id: "" });
+  const [renamingSector, setRenamingSector] = useState<string | null>(null);
+  const [sectorName, setSectorName] = useState("");
+  const [empOpen, setEmpOpen] = useState(false);
+  const [draft, setDraft] = useState<EmployeeDraft>(emptyEmployee);
 
   const createSectorM = useMutation({
     mutationFn: (name: string) => createSectorFn({ data: { name } }),
     onSuccess: () => { toast.success("Setor criado"); setNewSector(""); qc.invalidateQueries({ queryKey: ["sectors"] }); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
   });
-  const deleteSectorM = useMutation({
-    mutationFn: (id: string) => deleteSectorFn({ data: { id } }),
-    onSuccess: () => { toast.success("Setor removido"); qc.invalidateQueries({ queryKey: ["sectors"] }); },
-  });
-  const createEmpM = useMutation({
-    mutationFn: () => createEmpFn({ data: { ...emp, sector_id: emp.sector_id || null } }),
+  const renameSectorM = useMutation({
+    mutationFn: (v: { id: string; name: string }) => updateSectorFn({ data: v }),
     onSuccess: () => {
-      toast.success("Colaborador cadastrado");
-      setEmp({ name: "", role_profile: "clt_regular", entry_time: "08:00", journey_hours: 8, sector_id: "" });
+      toast.success("Setor atualizado");
+      setRenamingSector(null);
+      qc.invalidateQueries({ queryKey: ["sectors"] });
       qc.invalidateQueries({ queryKey: ["employees"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
+  });
+  const deleteSectorM = useMutation({
+    mutationFn: (id: string) => deleteSectorFn({ data: { id } }),
+    onSuccess: () => { toast.success("Setor removido"); qc.invalidateQueries({ queryKey: ["sectors"] }); },
   });
   const deleteEmpM = useMutation({
     mutationFn: (id: string) => deleteEmpFn({ data: { id } }),
     onSuccess: () => { toast.success("Colaborador removido"); qc.invalidateQueries({ queryKey: ["employees"] }); },
   });
+
 
   return (
     <AppShell>
