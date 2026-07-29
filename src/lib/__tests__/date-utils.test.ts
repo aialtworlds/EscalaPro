@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, formatDatePt, mondayOf, todayISO } from "@/lib/date-utils";
+import { addDays, formatDatePt, mondayOf, todayISO, parseDurationToMinutes, hoursToHHMM, hhmmToHours } from "@/lib/date-utils";
 
 describe("todayISO — fuso da operação", () => {
   it("não pula de dia às 23h BRT (02h UTC do dia seguinte)", () => {
