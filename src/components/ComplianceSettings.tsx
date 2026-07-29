@@ -24,7 +24,9 @@ import { listEmployees } from "@/lib/employees.functions";
 import { REGIME_LABELS, FEDERAL_PARAMS } from "@/lib/clt/params";
 import type { WorkRegime } from "@/lib/clt/params";
 import { COMPLIANCE_DISCLAIMER } from "@/lib/clt-rules";
-import { formatDatePt } from "@/lib/date-utils";
+import { formatDatePt, hoursToHHMM, hhmmToHours } from "@/lib/date-utils";
+import { HhmmInput } from "@/components/HhmmInput";
+
 
 const NONE = "__none__";
 
