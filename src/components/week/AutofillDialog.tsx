@@ -6,15 +6,16 @@ import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { HhmmInput } from "@/components/HhmmInput";
 import { autofillWeek, applyWeekPlan } from "@/lib/autofill.functions";
 import { listEmployees } from "@/lib/employees.functions";
 import { WEEKDAY_LABELS, weekdayOf, trimTime } from "@/lib/date-utils";
 
 type Draft = {
+  label?: string | null;
   employee_id: string;
   sector_id: string | null;
   shift_date: string;
@@ -32,6 +33,7 @@ export function AutofillDialog({
   const applyFn = useServerFn(applyWeekPlan);
   const empsFn = useServerFn(listEmployees);
   const [replace, setReplace] = useState(false);
+  const [mode, setMode] = useState<"week" | "month">("week");
   const [rows, setRows] = useState<Draft[] | null>(null);
   const [gaps, setGaps] = useState<Gap[]>([]);
 
@@ -41,9 +43,10 @@ export function AutofillDialog({
   const reset = () => { setRows(null); setGaps([]); };
 
   const preview = useMutation({
-    mutationFn: () => previewFn({ data: { week_start: weekStart, replace, preview: true } }),
+    mutationFn: () => previewFn({ data: { week_start: weekStart, mode, replace, preview: true } }),
     onSuccess: (r) => {
       setRows(r.planned.map((p) => ({
+        label: (p as { label?: string | null }).label ?? null,
         employee_id: p.employee_id,
         sector_id: (p as { sector_id?: string | null }).sector_id ?? null,
         shift_date: p.shift_date,
@@ -57,7 +60,7 @@ export function AutofillDialog({
   });
 
   const apply = useMutation({
-    mutationFn: () => applyFn({ data: { week_start: weekStart, replace, rows: rows ?? [] } }),
+    mutationFn: () => applyFn({ data: { week_start: weekStart, mode, replace, rows: rows ?? [] } }),
     onSuccess: (r) => {
       toast.success(`${r.inserted} turnos gerados`);
       qc.invalidateQueries({ queryKey: ["shifts"] });
@@ -98,10 +101,33 @@ export function AutofillDialog({
           </DialogDescription>
         </DialogHeader>
 
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">
+            Período
+          </p>
+          <div className="grid grid-cols-2 gap-1">
+            {([["week", "Semana"], ["month", "Mês inteiro"]] as const).map(([m, label]) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={mode === m}
+                onClick={() => { setMode(m); reset(); }}
+                className={`py-2 rounded text-[11px] font-bold uppercase border transition-colors ${
+                  mode === m
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary text-muted-foreground border-border"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <label className="flex items-start gap-2 cursor-pointer">
           <Checkbox checked={replace} onCheckedChange={(v) => { setReplace(!!v); reset(); }} className="mt-0.5" />
           <span className="text-xs leading-snug">
-            Substituir a semana inteira
+            {mode === "month" ? "Substituir o mês inteiro" : "Substituir a semana inteira"}
             <span className="block text-muted-foreground">
               Sem marcar, o gerador só completa o que falta. Um ponto de restauração é criado antes de gravar.
             </span>
@@ -134,14 +160,17 @@ export function AutofillDialog({
                       <Trash2 className="size-3.5 text-destructive" />
                     </Button>
                   </div>
+                  {r.label && (
+                    <p className="pl-16 text-[10px] uppercase tracking-wider text-muted-foreground">{r.label}</p>
+                  )}
                   <div className="flex items-center gap-2 pl-16">
-                    <Input
-                      type="time" className="h-8 text-xs font-mono" value={r.start_time}
-                      onChange={(e) => patch(i, { start_time: e.target.value })} aria-label="Início"
+                    <HhmmInput
+                      clock className="h-8 text-xs" value={r.start_time}
+                      onChange={(v) => patch(i, { start_time: v })} aria-label="Início"
                     />
-                    <Input
-                      type="time" className="h-8 text-xs font-mono" value={r.end_time}
-                      onChange={(e) => patch(i, { end_time: e.target.value })} aria-label="Fim"
+                    <HhmmInput
+                      clock className="h-8 text-xs" value={r.end_time}
+                      onChange={(v) => patch(i, { end_time: v })} aria-label="Fim"
                     />
                   </div>
                 </div>

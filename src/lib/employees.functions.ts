@@ -50,3 +50,34 @@ export const deleteEmployee = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/** Edição completa do cadastro — todo campo salvo pode ser alterado depois. */
+export const updateEmployee = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      name: z.string().min(1).max(80),
+      role_profile: roleProfile,
+      entry_time: z.string().regex(/^\d{2}:\d{2}$/),
+      journey_hours: z.number().min(0.25).max(24),
+      sector_id: z.string().uuid().nullable(),
+      compliance_profile_id: z.string().uuid().nullable().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { id, ...patch } = data;
+    const { data: row, error } = await context.supabase
+      .from("employees")
+      .update(patch)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    await context.supabase.from("activity_log").insert({
+      owner_id: context.userId,
+      event_type: "employee.updated",
+      payload: { name: data.name },
+    });
+    return row;
+  });

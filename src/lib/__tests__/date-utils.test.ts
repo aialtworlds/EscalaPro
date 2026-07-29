@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, formatDatePt, mondayOf, todayISO } from "@/lib/date-utils";
+import { addDays, formatDatePt, mondayOf, todayISO, parseDurationToMinutes, hoursToHHMM, hhmmToHours } from "@/lib/date-utils";
 
 describe("todayISO — fuso da operação", () => {
   it("não pula de dia às 23h BRT (02h UTC do dia seguinte)", () => {
@@ -32,5 +32,21 @@ describe("aritmética de datas", () => {
 
   it("formatDatePt usa o dia civil, não o horário local", () => {
     expect(formatDatePt("2026-07-27")).toBe("Segunda, 27/07");
+  });
+});
+
+describe("durações HH:MM", () => {
+  it("aceita formatos digitados pelo gestor", () => {
+    expect(parseDurationToMinutes("9:40")).toBe(580);
+    expect(parseDurationToMinutes("9h40")).toBe(580);
+    expect(parseDurationToMinutes("0940")).toBe(580);
+    expect(parseDurationToMinutes("9,5")).toBe(570);
+    expect(parseDurationToMinutes("8")).toBe(480);
+    expect(parseDurationToMinutes("9:70")).toBeNull();
+  });
+
+  it("converte horas decimais ida e volta", () => {
+    expect(hoursToHHMM(9.6667)).toBe("09:40");
+    expect(hhmmToHours("09:40")).toBeCloseTo(9.6667, 3);
   });
 });

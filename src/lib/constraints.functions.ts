@@ -74,3 +74,39 @@ export const deleteConstraint = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const updateConstraint = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        kind: z.enum(["indisponivel_semanal", "afastamento"]),
+        weekday: z.number().int().min(0).max(6).nullable().optional(),
+        start_date: iso.nullable().optional(),
+        end_date: iso.nullable().optional(),
+        start_time: time.nullable().optional(),
+        end_time: time.nullable().optional(),
+        note: z.string().max(160).nullable().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const patch = {
+      kind: data.kind,
+      weekday: data.kind === "indisponivel_semanal" ? (data.weekday ?? null) : null,
+      start_date: data.kind === "afastamento" ? (data.start_date ?? null) : null,
+      end_date: data.kind === "afastamento" ? (data.end_date ?? null) : null,
+      start_time: data.kind === "indisponivel_semanal" ? (data.start_time ?? null) : null,
+      end_time: data.kind === "indisponivel_semanal" ? (data.end_time ?? null) : null,
+      note: data.note ?? null,
+    };
+    const { data: row, error } = await context.supabase
+      .from("employee_constraints")
+      .update(patch)
+      .eq("id", data.id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return row;
+  });

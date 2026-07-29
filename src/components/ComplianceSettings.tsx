@@ -24,46 +24,61 @@ import { listEmployees } from "@/lib/employees.functions";
 import { REGIME_LABELS, FEDERAL_PARAMS } from "@/lib/clt/params";
 import type { WorkRegime } from "@/lib/clt/params";
 import { COMPLIANCE_DISCLAIMER } from "@/lib/clt-rules";
-import { formatDatePt } from "@/lib/date-utils";
+import { formatDatePt, hoursToHHMM, hhmmToHours } from "@/lib/date-utils";
+import { HhmmInput } from "@/components/HhmmInput";
+
 
 const NONE = "__none__";
 
 /** Campos editáveis de parâmetro (os demais seguem sempre a base federal). */
-const PARAM_FIELDS: { key: keyof typeof FEDERAL_PARAMS; label: string; step?: number }[] = [
-  { key: "journeyHours", label: "Jornada diária (h)", step: 0.5 },
-  { key: "weeklyHours", label: "Teto semanal (h)", step: 1 },
-  { key: "maxOvertimeHours", label: "Extras/dia (h)", step: 0.5 },
-  { key: "interJourneyHours", label: "Interjornada (h)", step: 1 },
-  { key: "mealBreakMinutes", label: "Refeição (min)", step: 5 },
-  { key: "maxConsecutiveDays", label: "Dias seguidos máx.", step: 1 },
+const PARAM_FIELDS: { key: keyof typeof FEDERAL_PARAMS; label: string; kind: "hhmm" | "int" }[] = [
+  { key: "journeyHours", label: "Jornada diária (HH:MM)", kind: "hhmm" },
+  { key: "weeklyHours", label: "Teto semanal (HH:MM)", kind: "hhmm" },
+  { key: "maxOvertimeHours", label: "Extras/dia (HH:MM)", kind: "hhmm" },
+  { key: "interJourneyHours", label: "Interjornada (HH:MM)", kind: "hhmm" },
+  { key: "mealBreakMinutes", label: "Refeição (min)", kind: "int" },
+  { key: "maxConsecutiveDays", label: "Dias seguidos máx.", kind: "int" },
 ];
 
 type Params = Record<string, number>;
 
 function ParamGrid({ value, onChange }: { value: Params; onChange: (p: Params) => void }) {
+  const set = (key: string, v: number | null) => {
+    const next = { ...value };
+    if (v === null) delete next[key];
+    else next[key] = v;
+    onChange(next);
+  };
   return (
     <div className="grid grid-cols-2 gap-2">
       {PARAM_FIELDS.map((f) => (
         <div key={f.key}>
           <Label className="text-[10px]">{f.label}</Label>
-          <Input
-            type="number"
-            step={f.step}
-            className="font-mono"
-            placeholder={String(FEDERAL_PARAMS[f.key])}
-            value={value[f.key] ?? ""}
-            onChange={(e) => {
-              const next = { ...value };
-              if (e.target.value === "") delete next[f.key];
-              else next[f.key] = Number(e.target.value);
-              onChange(next);
-            }}
-          />
+          {f.kind === "hhmm" ? (
+            <HhmmInput
+              placeholder={hoursToHHMM(FEDERAL_PARAMS[f.key] as number)}
+              value={value[f.key] !== undefined ? hoursToHHMM(value[f.key]) : ""}
+              onChange={(v) => set(f.key, v ? hhmmToHours(v) : null)}
+            />
+          ) : (
+            <Input
+              type="text"
+              inputMode="numeric"
+              className="font-mono"
+              placeholder={String(FEDERAL_PARAMS[f.key])}
+              value={value[f.key] ?? ""}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/\D/g, "").slice(0, 4);
+                set(f.key, raw === "" ? null : Number(raw));
+              }}
+            />
+          )}
         </div>
       ))}
     </div>
   );
 }
+
 
 function Section({
   icon: Icon,

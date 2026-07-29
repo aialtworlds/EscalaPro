@@ -110,3 +110,56 @@ describe("isBlocked", () => {
     expect(isBlocked(c, "2026-07-27", "17:00", "22:00")).toBe(true);
   });
 });
+
+describe("separação por setor e limites individuais", () => {
+  const base = {
+    days: ["2026-01-05"], // segunda
+    constraints: [],
+    existing: [],
+  };
+
+  it("não aloca gente de outro setor em turno exclusivo", () => {
+    const plan = buildWeekPlan({
+      ...base,
+      demands: [
+        { id: "d1", sector_id: "cozinha", weekday: 1, start_time: "08:00", end_time: "16:00", headcount: 1, label: "Manhã", sector_only: true },
+      ],
+      employees: [
+        { id: "e1", name: "Salão", sector_id: "salao", role_profile: "clt_regular", journey_hours: 8 },
+      ],
+    });
+    expect(plan.planned).toHaveLength(0);
+    expect(plan.gaps[0].reason).toContain("setor");
+    expect(plan.gaps[0].label).toBe("Manhã");
+  });
+
+  it("aceita outro setor quando o turno é aberto", () => {
+    const plan = buildWeekPlan({
+      ...base,
+      demands: [
+        { id: "d1", sector_id: "cozinha", weekday: 1, start_time: "08:00", end_time: "16:00", headcount: 1, sector_only: false },
+      ],
+      employees: [
+        { id: "e1", name: "Salão", sector_id: "salao", role_profile: "clt_regular", journey_hours: 8 },
+      ],
+    });
+    expect(plan.planned).toHaveLength(1);
+  });
+
+  it("respeita a jornada individual do colaborador", () => {
+    const plan = buildWeekPlan({
+      ...base,
+      demands: [
+        { id: "d1", sector_id: null, weekday: 1, start_time: "08:00", end_time: "18:00", headcount: 1 },
+      ],
+      employees: [
+        {
+          id: "e1", name: "Estagiário", sector_id: null, role_profile: "estagiario", journey_hours: 6,
+          limits: { journeyHours: 6, maxOvertimeHours: 0, weeklyHours: 30, interJourneyHours: 11, maxDaysPerWeek: 5 },
+        },
+      ],
+    });
+    expect(plan.planned).toHaveLength(0);
+    expect(plan.gaps[0].reason).toContain("jornada");
+  });
+});
