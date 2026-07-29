@@ -34,3 +34,19 @@ describe("aritmética de datas", () => {
     expect(formatDatePt("2026-07-27")).toBe("Segunda, 27/07");
   });
 });
+
+describe("durações HH:MM", () => {
+  it("aceita formatos digitados pelo gestor", () => {
+    expect(parseDurationToMinutes("9:40")).toBe(580);
+    expect(parseDurationToMinutes("9h40")).toBe(580);
+    expect(parseDurationToMinutes("0940")).toBe(580);
+    expect(parseDurationToMinutes("9,5")).toBe(570);
+    expect(parseDurationToMinutes("8")).toBe(480);
+    expect(parseDurationToMinutes("9:70")).toBeNull();
+  });
+
+  it("converte horas decimais ida e volta", () => {
+    expect(hoursToHHMM(9.6667)).toBe("09:40");
+    expect(hhmmToHours("09:40")).toBeCloseTo(9.6667, 3);
+  });
+});

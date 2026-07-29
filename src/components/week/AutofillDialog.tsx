@@ -15,6 +15,7 @@ import { listEmployees } from "@/lib/employees.functions";
 import { WEEKDAY_LABELS, weekdayOf, trimTime } from "@/lib/date-utils";
 
 type Draft = {
+  label?: string | null;
   employee_id: string;
   sector_id: string | null;
   shift_date: string;
@@ -45,6 +46,7 @@ export function AutofillDialog({
     mutationFn: () => previewFn({ data: { week_start: weekStart, mode, replace, preview: true } }),
     onSuccess: (r) => {
       setRows(r.planned.map((p) => ({
+        label: (p as { label?: string | null }).label ?? null,
         employee_id: p.employee_id,
         sector_id: (p as { sector_id?: string | null }).sector_id ?? null,
         shift_date: p.shift_date,
@@ -158,6 +160,9 @@ export function AutofillDialog({
                       <Trash2 className="size-3.5 text-destructive" />
                     </Button>
                   </div>
+                  {r.label && (
+                    <p className="pl-16 text-[10px] uppercase tracking-wider text-muted-foreground">{r.label}</p>
+                  )}
                   <div className="flex items-center gap-2 pl-16">
                     <HhmmInput
                       clock className="h-8 text-xs" value={r.start_time}
