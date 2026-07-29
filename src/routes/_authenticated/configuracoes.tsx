@@ -79,14 +79,39 @@ function SettingsPage() {
         </div>
         <div className="mt-3 space-y-2">
           {sectors.data?.map((s) => (
-            <div key={s.id} className="flex items-center justify-between bg-card border border-border rounded-lg p-3">
-              <span className="text-sm font-medium">{s.name}</span>
-              <button
-                onClick={() => confirm("Remover setor?") && deleteSectorM.mutate(s.id)}
-                className="text-muted-foreground hover:text-destructive p-1"
-              >
-                <Trash2 className="size-4" />
-              </button>
+            <div key={s.id} className="flex items-center gap-2 bg-card border border-border rounded-lg p-3">
+              {renamingSector === s.id ? (
+                <>
+                  <Input
+                    autoFocus
+                    value={sectorName}
+                    onChange={(e) => setSectorName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && sectorName.trim()) renameSectorM.mutate({ id: s.id, name: sectorName }); }}
+                    className="h-8"
+                  />
+                  <Button size="sm" className="h-8" disabled={!sectorName.trim()} onClick={() => renameSectorM.mutate({ id: s.id, name: sectorName })}>
+                    Salvar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="text-sm font-medium flex-1 truncate">{s.name}</span>
+                  <button
+                    onClick={() => { setRenamingSector(s.id); setSectorName(s.name); }}
+                    className="text-muted-foreground hover:text-primary p-1"
+                    aria-label={`Renomear setor ${s.name}`}
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                  <button
+                    onClick={() => confirm("Remover setor?") && deleteSectorM.mutate(s.id)}
+                    className="text-muted-foreground hover:text-destructive p-1"
+                    aria-label={`Remover setor ${s.name}`}
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -94,67 +119,45 @@ function SettingsPage() {
 
       <section className="px-4 mt-6">
         <h2 className="text-[11px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-2">2. Cadastro de Colaboradores</h2>
-        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <div>
-            <Label className="text-xs">Nome</Label>
-            <Input value={emp.name} onChange={(e) => setEmp({ ...emp, name: e.target.value })} placeholder="Nome completo" />
-          </div>
-          <div>
-            <Label className="text-xs">Perfil Regulador</Label>
-            <Select value={emp.role_profile} onValueChange={(v: any) => setEmp({ ...emp, role_profile: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="clt_regular">CLT Regular (Padrão)</SelectItem>
-                <SelectItem value="estagiario">Estagiário (Máx 6h)</SelectItem>
-                <SelectItem value="clt_mulher">CLT Mulher (Proteção Domingo)</SelectItem>
-                <SelectItem value="escala_12x36">Escala 12x36</SelectItem>
-                <SelectItem value="pj">PJ / Prestador (fora da CLT)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs">Entrada</Label>
-              <Input type="time" value={emp.entry_time} onChange={(e) => setEmp({ ...emp, entry_time: e.target.value })} className="font-mono" />
-            </div>
-            <div>
-              <Label className="text-xs">Jornada (horas)</Label>
-              <Input type="number" min={1} max={12} step={0.5} value={emp.journey_hours} onChange={(e) => setEmp({ ...emp, journey_hours: Number(e.target.value) })} />
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs">Setor</Label>
-            <Select value={emp.sector_id} onValueChange={(v) => setEmp({ ...emp, sector_id: v })}>
-              <SelectTrigger><SelectValue placeholder="Sem setor" /></SelectTrigger>
-              <SelectContent>
-                {sectors.data?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button className="w-full" disabled={!emp.name || createEmpM.isPending} onClick={() => createEmpM.mutate()}>
-            Salvar na Base
-          </Button>
-        </div>
+        <Button className="w-full" onClick={() => { setDraft(emptyEmployee); setEmpOpen(true); }}>
+          <Plus className="size-4 mr-2" /> Novo colaborador
+        </Button>
 
         <div className="mt-4 space-y-2">
           {employees.data?.map((e) => (
-            <div key={e.id} className="flex items-center justify-between bg-card border border-border rounded-lg p-3">
-              <div>
-                <p className="text-sm font-medium">{e.name}</p>
+            <div key={e.id} className="flex items-center justify-between gap-2 bg-card border border-border rounded-lg p-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{e.name}</p>
                 <p className="text-[10px] text-muted-foreground uppercase">
-                  {ROLE_LABELS[e.role_profile]} • {e.sectors?.name ?? "Sem setor"} • {e.entry_time.slice(0, 5)} / {Number(e.journey_hours)}h
+                  {ROLE_LABELS[e.role_profile]} • {e.sectors?.name ?? "Sem setor"} • {e.entry_time.slice(0, 5)} / {hoursToHHMM(e.journey_hours)}
                 </p>
               </div>
-              <button
-                onClick={() => confirm("Remover colaborador?") && deleteEmpM.mutate(e.id)}
-                className="text-muted-foreground hover:text-destructive p-1"
-              >
-                <Trash2 className="size-4" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => { setDraft(draftFromRow(e)); setEmpOpen(true); }}
+                  className="text-muted-foreground hover:text-primary p-1"
+                  aria-label={`Editar ${e.name}`}
+                >
+                  <Pencil className="size-4" />
+                </button>
+                <button
+                  onClick={() => confirm("Remover colaborador?") && deleteEmpM.mutate(e.id)}
+                  className="text-muted-foreground hover:text-destructive p-1"
+                  aria-label={`Remover ${e.name}`}
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
             </div>
           ))}
+          {!employees.data?.length && (
+            <p className="text-xs text-muted-foreground italic">Nenhum colaborador cadastrado.</p>
+          )}
         </div>
+
+        <EmployeeDialog open={empOpen} onOpenChange={setEmpOpen} initial={draft} />
       </section>
+
 
       <ComplianceSettings />
 
