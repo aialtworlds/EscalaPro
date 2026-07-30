@@ -69,7 +69,35 @@ function SemanaPage() {
 
   return (
     <AppShell>
+      <div className="px-4 pt-4 print:hidden">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-2">Planilha</p>
+        <div className="grid grid-cols-2 gap-1">
+          {([["week", "Semana"], ["month", "Mês"]] as const).map(([v, label]) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={view === v}
+              onClick={() => setView(v)}
+              className={`py-2 rounded text-[11px] font-bold uppercase border transition-colors ${
+                view === v
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-secondary text-muted-foreground border-border"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {view === "month" ? (
+        <div className="pt-3">
+          <MonthMatrix month={month} onMonthChange={setMonth} />
+        </div>
+      ) : (
+        <>
       <div className="px-4 pt-4 pb-2 print:pt-0">
+
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Planilha Semanal</p>
         <div className="flex items-center justify-between mt-1">
           <h1 className="text-lg font-bold font-mono">{weekLabel}</h1>
