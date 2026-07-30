@@ -15,6 +15,7 @@ import { ChevronLeft, ChevronRight, Copy, Download, Printer, Share2, History, Wa
 import { AutofillDialog } from "@/components/week/AutofillDialog";
 import { ShareDialog } from "@/components/week/ShareDialog";
 import { HistoryDialog } from "@/components/week/HistoryDialog";
+import { MonthMatrix } from "@/components/week/MonthMatrix";
 
 export const Route = createFileRoute("/_authenticated/semana")({
   head: () => ({ meta: [{ title: "Planilha Semanal — EscalaPro OS" }, { name: "description", content: "Matriz semanal de escala." }] }),
@@ -22,6 +23,8 @@ export const Route = createFileRoute("/_authenticated/semana")({
 });
 
 function SemanaPage() {
+  const [view, setView] = useState<"week" | "month">("week");
+  const [month, setMonth] = useState(() => todayISO().slice(0, 7));
   const [weekStart, setWeekStart] = useState(mondayOf(todayISO()));
   const [dupOpen, setDupOpen] = useState(false);
   const [autoOpen, setAutoOpen] = useState(false);
