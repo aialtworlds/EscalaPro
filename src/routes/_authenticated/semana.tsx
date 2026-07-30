@@ -186,6 +186,10 @@ function SemanaPage() {
           <span className="flex items-center gap-1"><span className="size-3 bg-warning/20 rounded" /> Freelancer</span>
         </div>
       </div>
+        </>
+      )}
+
+
 
       <DuplicateWeekDialog open={dupOpen} onOpenChange={setDupOpen} weekStart={weekStart} />
       <AutofillDialog open={autoOpen} onOpenChange={setAutoOpen} weekStart={weekStart} />
