@@ -111,8 +111,10 @@ export function MonthMatrix({
           {loading ? "Carregando…" : `${totalShifts} turno(s) no mês`}
         </p>
         <p className="text-[10px] text-muted-foreground mt-1 print:hidden">
-          Toque e arraste um turno para outro dia/colaborador — soltar sobre outro turno troca os dois.
+          Arraste um turno para outro dia/colaborador (soltar sobre outro turno troca os dois) ou arraste o nome do
+          colaborador para uma célula para realocação rápida.
         </p>
+
 
         <div className="grid grid-cols-2 gap-2 mt-2 print:hidden">
           <Button size="sm" variant="outline" className="text-xs" onClick={exportCsv}>
