@@ -171,6 +171,10 @@ function SettingsPage() {
 
       <DemandSettings />
 
+      <PlanSettings />
+
+
+
       <section className="px-4 mt-8">
         <Button
           variant="outline"
