@@ -111,8 +111,10 @@ export function MonthMatrix({
           {loading ? "Carregando…" : `${totalShifts} turno(s) no mês`}
         </p>
         <p className="text-[10px] text-muted-foreground mt-1 print:hidden">
-          Toque e arraste um turno para outro dia/colaborador — soltar sobre outro turno troca os dois.
+          Arraste um turno para outro dia/colaborador (soltar sobre outro turno troca os dois) ou arraste o nome do
+          colaborador para uma célula para realocação rápida.
         </p>
+
 
         <div className="grid grid-cols-2 gap-2 mt-2 print:hidden">
           <Button size="sm" variant="outline" className="text-xs" onClick={exportCsv}>
@@ -149,7 +151,13 @@ export function MonthMatrix({
             <tbody>
               {employees.data?.map((emp) => (
                 <tr key={emp.id} className="border-t border-border">
-                  <td className="p-2 font-medium border-r border-border sticky left-0 bg-card z-10 truncate max-w-[100px]">
+                  <td
+                    onPointerDown={(e) => drag.startEmployeeDrag(e, emp.id, emp.name)}
+                    className={`p-2 font-medium border-r border-border sticky left-0 bg-card z-10 truncate max-w-[100px] cursor-grab touch-none select-none ${
+                      drag.dragEmployeeId === emp.id ? "text-primary" : ""
+                    }`}
+                    title="Arraste o nome para alocar em um dia"
+                  >
                     {emp.name}
                   </td>
                   {days.map((d) => {
@@ -161,7 +169,7 @@ export function MonthMatrix({
                         data-cell={key}
                         data-shift-id={s?.id ?? ""}
                         className={`p-0.5 text-center border-r border-border last:border-r-0 ${
-                          drag.hoverKey === key && drag.dragId ? "bg-primary/20 outline outline-1 outline-primary" : ""
+                          drag.hoverKey === key && drag.active ? "bg-primary/20 outline outline-1 outline-primary" : ""
                         }`}
                       >
                         {s ? (
@@ -195,6 +203,16 @@ export function MonthMatrix({
           </p>
         )}
       </div>
+
+      {drag.active && drag.pos ? (
+        <div
+          className="fixed z-50 pointer-events-none px-2 py-1 rounded bg-primary text-primary-foreground text-[10px] font-bold shadow-lg"
+          style={{ left: drag.pos.x + 12, top: drag.pos.y - 12 }}
+        >
+          {drag.dragLabel ?? "Mover turno"}
+        </div>
+      ) : null}
     </>
   );
 }
+
