@@ -162,12 +162,25 @@ function SemanaPage() {
                   </td>
                   {days.map((d) => {
                     const s = shifts.data?.find((x) => x.employee_id === emp.id && x.shift_date === d);
+                    const key = `${emp.id}|${d}`;
                     return (
-                      <td key={d} className="p-1 text-center border-r border-border last:border-r-0">
+                      <td
+                        key={d}
+                        data-cell={key}
+                        data-shift-id={s?.id ?? ""}
+                        className={`p-1 text-center border-r border-border last:border-r-0 ${
+                          drag.hoverKey === key && drag.dragId ? "bg-primary/20 outline outline-1 outline-primary" : ""
+                        }`}
+                      >
                         {s ? (
-                          <div className={`py-1 px-1 rounded text-[9px] font-mono font-bold ${
-                            s.status === "absent" ? "bg-destructive/15 text-destructive" : "bg-primary/10 text-primary"
-                          }`}>
+                          <div
+                            onPointerDown={(e) => drag.startDrag(e, s.id)}
+                            className={`py-1 px-1 rounded text-[9px] font-mono font-bold cursor-grab touch-none select-none ${
+                              drag.dragId === s.id ? "opacity-40" : ""
+                            } ${
+                              s.status === "absent" ? "bg-destructive/15 text-destructive" : "bg-primary/10 text-primary"
+                            }`}
+                          >
                             {trimTime(s.start_time).slice(0, 5)}
                           </div>
                         ) : (
@@ -178,6 +191,7 @@ function SemanaPage() {
                   })}
                 </tr>
               ))}
+
               {shifts.data?.filter((s) => !s.employee_id).length ? (
                 <tr className="border-t border-border">
                   <td className="p-2 font-medium border-r border-border sticky left-0 bg-card z-10 text-muted-foreground italic">
