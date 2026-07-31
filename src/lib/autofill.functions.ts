@@ -20,6 +20,10 @@ export const autofillWeek = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => input.parse(d))
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
+    if (data.mode === "month") {
+      const { requirePro } = await import("@/lib/billing.server");
+      await requirePro(sb as never, context.userId, "month_autofill");
+    }
     const { periodDays, weekStarts, loadPlanInputs } = await import("@/lib/autofill.server");
     const days = periodDays(data.week_start, data.mode);
     const { demands, employees, constraints, existing, start, end } = await loadPlanInputs(
@@ -98,6 +102,10 @@ export const applyWeekPlan = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => applyInput.parse(d))
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
+    if (data.mode === "month") {
+      const { requirePro } = await import("@/lib/billing.server");
+      await requirePro(sb as never, context.userId, "month_autofill");
+    }
     const { periodDays, weekStarts, addDays } = await import("@/lib/autofill.server");
     const days = periodDays(data.week_start, data.mode);
     const start = days[0];

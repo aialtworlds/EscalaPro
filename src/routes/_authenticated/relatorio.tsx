@@ -9,6 +9,8 @@ import { monthlyReport } from "@/lib/report.functions";
 import { fmtMinutes, monthLabel, shiftMonth } from "@/lib/report";
 import { ROLE_LABELS, todayISO } from "@/lib/date-utils";
 import { COMPLIANCE_DISCLAIMER } from "@/lib/clt-rules";
+import { usePlan } from "@/hooks/usePlan";
+import { UpgradeCard } from "@/components/billing/UpgradeCard";
 
 export const Route = createFileRoute("/_authenticated/relatorio")({
   head: () => ({
@@ -26,11 +28,17 @@ export const Route = createFileRoute("/_authenticated/relatorio")({
 
 function ReportPage() {
   const [month, setMonth] = useState(() => todayISO().slice(0, 7));
+  const plan = usePlan();
   const fn = useServerFn(monthlyReport);
-  const q = useQuery({ queryKey: ["report", month], queryFn: () => fn({ data: { month } }) });
+  const q = useQuery({
+    queryKey: ["report", month],
+    queryFn: () => fn({ data: { month } }),
+    enabled: plan.isPro,
+  });
 
   const data = q.data;
   const rows = (data?.rows ?? []).filter((r) => r.shifts > 0 || r.absences > 0);
+
 
   function exportCsv() {
     if (!data) return;
@@ -53,7 +61,16 @@ function ReportPage() {
         <h1 className="text-lg font-bold">Relatório Mensal</h1>
       </div>
 
+      {!plan.isPro && !plan.isLoading && (
+        <div className="px-4 pb-4">
+          <UpgradeCard feature="month_report" />
+        </div>
+      )}
+
+      {!plan.isPro ? null : (
+      <>
       <div className="px-4 flex items-center justify-between gap-2">
+
         <div className="flex items-center gap-1">
           <Button size="icon" variant="outline" className="size-8" onClick={() => setMonth((m) => shiftMonth(m, -1))} aria-label="Mês anterior">
             <ChevronLeft className="size-4" />
@@ -135,6 +152,8 @@ function ReportPage() {
       </div>
 
       <p className="px-4 mt-4 text-[10px] leading-relaxed text-muted-foreground">{COMPLIANCE_DISCLAIMER}</p>
+      </>
+      )}
     </AppShell>
   );
 }

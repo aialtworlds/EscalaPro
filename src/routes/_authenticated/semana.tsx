@@ -17,6 +17,9 @@ import { ShareDialog } from "@/components/week/ShareDialog";
 import { HistoryDialog } from "@/components/week/HistoryDialog";
 import { MonthMatrix } from "@/components/week/MonthMatrix";
 import { useShiftDrag } from "@/components/week/useShiftDrag";
+import { usePlan } from "@/hooks/usePlan";
+import { UpgradeCard } from "@/components/billing/UpgradeCard";
+import { Lock } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/semana")({
   head: () => ({ meta: [{ title: "Planilha Semanal — EscalaPro OS" }, { name: "description", content: "Matriz semanal de escala." }] }),
@@ -24,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/semana")({
 });
 
 function SemanaPage() {
+  const plan = usePlan();
   const [view, setView] = useState<"week" | "month">("week");
   const [month, setMonth] = useState(() => todayISO().slice(0, 7));
   const [weekStart, setWeekStart] = useState(mondayOf(todayISO()));
@@ -83,13 +87,14 @@ function SemanaPage() {
               type="button"
               aria-pressed={view === v}
               onClick={() => setView(v)}
-              className={`py-2 rounded text-[11px] font-bold uppercase border transition-colors ${
+              className={`py-2 rounded text-[11px] font-bold uppercase border transition-colors inline-flex items-center justify-center gap-1 ${
                 view === v
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-secondary text-muted-foreground border-border"
               }`}
             >
               {label}
+              {v === "month" && !plan.isPro && <Lock className="size-3" />}
             </button>
           ))}
         </div>
@@ -97,8 +102,15 @@ function SemanaPage() {
 
       {view === "month" ? (
         <div className="pt-3">
-          <MonthMatrix month={month} onMonthChange={setMonth} />
+          {plan.isPro ? (
+            <MonthMatrix month={month} onMonthChange={setMonth} />
+          ) : (
+            <div className="px-4">
+              <UpgradeCard feature="month_matrix" />
+            </div>
+          )}
         </div>
+
       ) : (
         <>
       <div className="px-4 pt-4 pb-2 print:pt-0">

@@ -15,6 +15,7 @@ import { ROLE_LABELS, hoursToHHMM } from "@/lib/date-utils";
 import { ComplianceSettings } from "@/components/ComplianceSettings";
 import { ConstraintsSettings } from "@/components/ConstraintsSettings";
 import { DemandSettings } from "@/components/DemandSettings";
+import { PlanSettings } from "@/components/billing/PlanSettings";
 import {
   EmployeeDialog, emptyEmployee, draftFromRow, type EmployeeDraft,
 } from "@/components/settings/EmployeeDialog";
@@ -170,6 +171,10 @@ function SettingsPage() {
       <ConstraintsSettings />
 
       <DemandSettings />
+
+      <PlanSettings />
+
+
 
       <section className="px-4 mt-8">
         <Button
