@@ -9,6 +9,8 @@ import { monthlyReport } from "@/lib/report.functions";
 import { fmtMinutes, monthLabel, shiftMonth } from "@/lib/report";
 import { ROLE_LABELS, todayISO } from "@/lib/date-utils";
 import { COMPLIANCE_DISCLAIMER } from "@/lib/clt-rules";
+import { usePlan } from "@/hooks/usePlan";
+import { UpgradeCard } from "@/components/billing/UpgradeCard";
 
 export const Route = createFileRoute("/_authenticated/relatorio")({
   head: () => ({
