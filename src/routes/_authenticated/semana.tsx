@@ -240,7 +240,11 @@ function SemanaPage() {
           <span className="flex items-center gap-1"><span className="size-3 bg-destructive/20 rounded" /> Falta</span>
           <span className="flex items-center gap-1"><span className="size-3 bg-warning/20 rounded" /> Freelancer</span>
         </div>
+        <p className="text-[10px] text-muted-foreground print:hidden">
+          Toque e arraste um turno para outro dia ou colaborador. Soltar sobre um turno existente troca os dois.
+        </p>
       </div>
+
         </>
       )}
 
