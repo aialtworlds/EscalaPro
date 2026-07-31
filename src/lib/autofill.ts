@@ -101,6 +101,10 @@ function span(date: string, start: string, end: string) {
 
 const overlaps = (a: { s: number; e: number }, b: { s: number; e: number }) => a.s < b.e && b.s < a.e;
 
+/** Turno com setor só é coberto por gente lançada no mesmo setor. */
+const sameSector = (sectorId: string | null, demand: { sector_id: string | null }) =>
+  !demand.sector_id || sectorId === demand.sector_id;
+
 /** A restrição bloqueia esse colaborador nesse intervalo? */
 export function isBlocked(c: AutoConstraint, date: string, start: string, end: string): boolean {
   if (c.kind === "afastamento") {
