@@ -31,6 +31,7 @@ export function AutofillDialog({
   open, onOpenChange, weekStart,
 }: { open: boolean; onOpenChange: (o: boolean) => void; weekStart: string }) {
   const qc = useQueryClient();
+  const plan = usePlan();
   const previewFn = useServerFn(autofillWeek);
   const applyFn = useServerFn(applyWeekPlan);
   const empsFn = useServerFn(listEmployees);
