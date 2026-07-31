@@ -206,10 +206,10 @@ export function AutofillDialog({
         )}
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => preview.mutate()} disabled={preview.isPending}>
+          <Button variant="outline" onClick={() => preview.mutate()} disabled={preview.isPending || locked}>
             {preview.isPending ? "Calculando…" : rows ? "Recalcular" : "Pré-visualizar"}
           </Button>
-          <Button onClick={() => apply.mutate()} disabled={apply.isPending || !rows || !rows.length}>
+          <Button onClick={() => apply.mutate()} disabled={apply.isPending || locked || !rows || !rows.length}>
             {apply.isPending ? "Salvando…" : "Salvar escala"}
           </Button>
         </DialogFooter>
