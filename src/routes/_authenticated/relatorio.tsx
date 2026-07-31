@@ -152,6 +152,8 @@ function ReportPage() {
       </div>
 
       <p className="px-4 mt-4 text-[10px] leading-relaxed text-muted-foreground">{COMPLIANCE_DISCLAIMER}</p>
+      </>
+      )}
     </AppShell>
   );
 }
