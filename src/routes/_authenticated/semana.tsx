@@ -247,9 +247,20 @@ function SemanaPage() {
           <span className="flex items-center gap-1"><span className="size-3 bg-warning/20 rounded" /> Freelancer</span>
         </div>
         <p className="text-[10px] text-muted-foreground print:hidden">
-          Toque e arraste um turno para outro dia ou colaborador. Soltar sobre um turno existente troca os dois.
+          Arraste um turno para outro dia ou colaborador (soltar sobre um turno troca os dois). Arraste o
+          <strong className="text-foreground"> nome do colaborador </strong> para uma célula para realocação rápida.
         </p>
       </div>
+
+      {drag.active && drag.pos ? (
+        <div
+          className="fixed z-50 pointer-events-none px-2 py-1 rounded bg-primary text-primary-foreground text-[10px] font-bold shadow-lg"
+          style={{ left: drag.pos.x + 12, top: drag.pos.y - 12 }}
+        >
+          {drag.dragLabel ?? "Mover turno"}
+        </div>
+      ) : null}
+
 
         </>
       )}
