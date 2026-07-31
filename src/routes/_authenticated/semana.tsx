@@ -16,6 +16,7 @@ import { AutofillDialog } from "@/components/week/AutofillDialog";
 import { ShareDialog } from "@/components/week/ShareDialog";
 import { HistoryDialog } from "@/components/week/HistoryDialog";
 import { MonthMatrix } from "@/components/week/MonthMatrix";
+import { useShiftDrag } from "@/components/week/useShiftDrag";
 
 export const Route = createFileRoute("/_authenticated/semana")({
   head: () => ({ meta: [{ title: "Planilha Semanal — EscalaPro OS" }, { name: "description", content: "Matriz semanal de escala." }] }),
@@ -30,6 +31,7 @@ function SemanaPage() {
   const [autoOpen, setAutoOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [histOpen, setHistOpen] = useState(false);
+  const drag = useShiftDrag();
   const shiftsFn = useServerFn(listShiftsByWeek);
   const empsFn = useServerFn(listEmployees);
   const shifts = useQuery({ queryKey: ["shifts", "week", weekStart], queryFn: () => shiftsFn({ data: { week_start: weekStart } }) });
@@ -162,12 +164,25 @@ function SemanaPage() {
                   </td>
                   {days.map((d) => {
                     const s = shifts.data?.find((x) => x.employee_id === emp.id && x.shift_date === d);
+                    const key = `${emp.id}|${d}`;
                     return (
-                      <td key={d} className="p-1 text-center border-r border-border last:border-r-0">
+                      <td
+                        key={d}
+                        data-cell={key}
+                        data-shift-id={s?.id ?? ""}
+                        className={`p-1 text-center border-r border-border last:border-r-0 ${
+                          drag.hoverKey === key && drag.dragId ? "bg-primary/20 outline outline-1 outline-primary" : ""
+                        }`}
+                      >
                         {s ? (
-                          <div className={`py-1 px-1 rounded text-[9px] font-mono font-bold ${
-                            s.status === "absent" ? "bg-destructive/15 text-destructive" : "bg-primary/10 text-primary"
-                          }`}>
+                          <div
+                            onPointerDown={(e) => drag.startDrag(e, s.id)}
+                            className={`py-1 px-1 rounded text-[9px] font-mono font-bold cursor-grab touch-none select-none ${
+                              drag.dragId === s.id ? "opacity-40" : ""
+                            } ${
+                              s.status === "absent" ? "bg-destructive/15 text-destructive" : "bg-primary/10 text-primary"
+                            }`}
+                          >
                             {trimTime(s.start_time).slice(0, 5)}
                           </div>
                         ) : (
@@ -178,6 +193,7 @@ function SemanaPage() {
                   })}
                 </tr>
               ))}
+
               {shifts.data?.filter((s) => !s.employee_id).length ? (
                 <tr className="border-t border-border">
                   <td className="p-2 font-medium border-r border-border sticky left-0 bg-card z-10 text-muted-foreground italic">
@@ -186,7 +202,15 @@ function SemanaPage() {
                   {days.map((d) => {
                     const count = shifts.data?.filter((x) => !x.employee_id && x.shift_date === d).length ?? 0;
                     return (
-                      <td key={d} className="p-1 text-center border-r border-border last:border-r-0">
+                      <td
+                        key={d}
+                        data-cell={`freela|${d}`}
+                        className={`p-1 text-center border-r border-border last:border-r-0 ${
+                          drag.hoverKey === `freela|${d}` && drag.dragId
+                            ? "bg-primary/20 outline outline-1 outline-primary"
+                            : ""
+                        }`}
+                      >
                         {count > 0 ? (
                           <div className="py-1 rounded text-[9px] font-mono font-bold bg-warning/15 text-warning-foreground">
                             +{count}
@@ -216,7 +240,11 @@ function SemanaPage() {
           <span className="flex items-center gap-1"><span className="size-3 bg-destructive/20 rounded" /> Falta</span>
           <span className="flex items-center gap-1"><span className="size-3 bg-warning/20 rounded" /> Freelancer</span>
         </div>
+        <p className="text-[10px] text-muted-foreground print:hidden">
+          Toque e arraste um turno para outro dia ou colaborador. Soltar sobre um turno existente troca os dois.
+        </p>
       </div>
+
         </>
       )}
 
