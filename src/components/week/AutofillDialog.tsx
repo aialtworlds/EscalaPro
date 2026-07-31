@@ -15,6 +15,7 @@ import { listEmployees } from "@/lib/employees.functions";
 import { WEEKDAY_LABELS, weekdayOf, trimTime } from "@/lib/date-utils";
 import { usePlan } from "@/hooks/usePlan";
 import { UpgradeCard } from "@/components/billing/UpgradeCard";
+import { PRO_REQUIRED_ERROR } from "@/lib/billing";
 
 type Draft = {
   label?: string | null;
@@ -45,6 +46,12 @@ export function AutofillDialog({
   const locked = mode === "month" && !plan.isPro;
 
   const reset = () => { setRows(null); setGaps([]); };
+  const errMsg = (e: unknown) => {
+    const m = e instanceof Error ? e.message : "Falha";
+    return m.includes(PRO_REQUIRED_ERROR)
+      ? "Gerar o mês inteiro faz parte do plano mensal."
+      : m;
+  };
 
   const preview = useMutation({
     mutationFn: () => previewFn({ data: { week_start: weekStart, mode, replace, preview: true } }),
@@ -60,7 +67,7 @@ export function AutofillDialog({
       setGaps(r.gaps as Gap[]);
       if (!r.planned.length) toast.info("Nada a alocar com a demanda atual.");
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
+    onError: (e) => toast.error(errMsg(e)),
   });
 
   const apply = useMutation({
@@ -72,7 +79,7 @@ export function AutofillDialog({
       reset();
       onOpenChange(false);
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
+    onError: (e) => toast.error(errMsg(e)),
   });
 
   const dayLabel = (iso: string) => `${WEEKDAY_LABELS[weekdayOf(iso)]} ${iso.slice(8, 10)}`;
