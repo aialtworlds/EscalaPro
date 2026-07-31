@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -13,6 +13,8 @@ import { HhmmInput } from "@/components/HhmmInput";
 import { autofillWeek, applyWeekPlan } from "@/lib/autofill.functions";
 import { listEmployees } from "@/lib/employees.functions";
 import { WEEKDAY_LABELS, weekdayOf, trimTime } from "@/lib/date-utils";
+import { usePlan } from "@/hooks/usePlan";
+import { UpgradeCard } from "@/components/billing/UpgradeCard";
 
 type Draft = {
   label?: string | null;
