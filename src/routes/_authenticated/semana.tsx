@@ -16,6 +16,7 @@ import { AutofillDialog } from "@/components/week/AutofillDialog";
 import { ShareDialog } from "@/components/week/ShareDialog";
 import { HistoryDialog } from "@/components/week/HistoryDialog";
 import { MonthMatrix } from "@/components/week/MonthMatrix";
+import { useShiftDrag } from "@/components/week/useShiftDrag";
 
 export const Route = createFileRoute("/_authenticated/semana")({
   head: () => ({ meta: [{ title: "Planilha Semanal — EscalaPro OS" }, { name: "description", content: "Matriz semanal de escala." }] }),
