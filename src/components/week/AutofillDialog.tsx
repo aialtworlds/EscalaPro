@@ -115,17 +115,21 @@ export function AutofillDialog({
                 type="button"
                 aria-pressed={mode === m}
                 onClick={() => { setMode(m); reset(); }}
-                className={`py-2 rounded text-[11px] font-bold uppercase border transition-colors ${
+                className={`py-2 rounded text-[11px] font-bold uppercase border transition-colors inline-flex items-center justify-center gap-1 ${
                   mode === m
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-secondary text-muted-foreground border-border"
                 }`}
               >
                 {label}
+                {m === "month" && !plan.isPro && <Lock className="size-3" />}
               </button>
             ))}
           </div>
         </div>
+
+        {mode === "month" && !plan.isPro && <UpgradeCard feature="month_autofill" compact />}
+
 
         <label className="flex items-start gap-2 cursor-pointer">
           <Checkbox checked={replace} onCheckedChange={(v) => { setReplace(!!v); reset(); }} className="mt-0.5" />
