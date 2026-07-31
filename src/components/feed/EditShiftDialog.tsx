@@ -28,8 +28,8 @@ export function EditShiftDialog({
   onOpenChange: (o: boolean) => void;
   onSaved: () => void;
 }) {
-  const [start, setStart] = useState("08:00");
-  const [end, setEnd] = useState("16:00");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
   const [sector, setSector] = useState<string>("");
   const [label, setLabel] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);

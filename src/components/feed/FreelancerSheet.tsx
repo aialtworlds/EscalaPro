@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HhmmInput } from "@/components/HhmmInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createShift } from "@/lib/shifts.functions";
 import type { SectorRow } from "@/lib/types";
@@ -26,9 +27,9 @@ export function FreelancerSheet({
   sectors: SectorRow[];
   onCreated: () => void;
 }) {
-  const [preset, setPreset] = useState<number>(0);
-  const [customStart, setCustomStart] = useState("08:00");
-  const [customEnd, setCustomEnd] = useState("16:00");
+  const [preset, setPreset] = useState<number | null>(null);
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
   const [label, setLabel] = useState("");
   const [pickedSector, setPickedSector] = useState<string | null>(sectorId);
   const createFn = useServerFn(createShift);
@@ -56,8 +57,9 @@ export function FreelancerSheet({
   });
 
   const isCustom = preset === 3;
-  const start = isCustom ? customStart : SHIFT_PRESETS[preset].start;
-  const end = isCustom ? customEnd : SHIFT_PRESETS[preset].end;
+  const start = isCustom || preset === null ? customStart : SHIFT_PRESETS[preset].start;
+  const end = isCustom || preset === null ? customEnd : SHIFT_PRESETS[preset].end;
+  const canSubmit = !!start && !!end;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -90,15 +92,15 @@ export function FreelancerSheet({
           </button>
         </div>
 
-        {isCustom && (
+        {(isCustom || preset === null) && (
           <div className="grid grid-cols-2 gap-3 mt-4">
             <div>
               <Label className="text-xs">Início</Label>
-              <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="font-mono" />
+              <HhmmInput value={customStart} onChange={setCustomStart} clock aria-label="Início" />
             </div>
             <div>
               <Label className="text-xs">Fim</Label>
-              <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="font-mono" />
+              <HhmmInput value={customEnd} onChange={setCustomEnd} clock aria-label="Fim" />
             </div>
           </div>
         )}
@@ -124,7 +126,7 @@ export function FreelancerSheet({
         <SheetFooter className="mt-6">
           <Button
             className="w-full font-bold tracking-wide"
-            disabled={m.isPending}
+            disabled={m.isPending || !canSubmit}
             onClick={() => m.mutate({ start, end })}
           >
             {m.isPending ? "Alocando..." : "CONFIRMAR ALOCAÇÃO"}

@@ -4,23 +4,24 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { HhmmInput } from "@/components/HhmmInput";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X, Rocket } from "lucide-react";
-import { seedWorkspace, STARTER_SECTORS } from "@/lib/onboarding.functions";
+import { seedWorkspace } from "@/lib/onboarding.functions";
 
 type Draft = { name: string; sector_index: number; entry_time: string; journey_hours: number };
 
 export function OnboardingWizard({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const [step, setStep] = useState<1 | 2>(1);
-  const [sectors, setSectors] = useState<string[]>([...STARTER_SECTORS]);
+  const [sectors, setSectors] = useState<string[]>([]);
   const [sectorInput, setSectorInput] = useState("");
   const [employees, setEmployees] = useState<Draft[]>([]);
   const [name, setName] = useState("");
-  const [sectorIndex, setSectorIndex] = useState(0);
-  const [entry, setEntry] = useState("08:00");
-  const [hours, setHours] = useState(8);
+  const [sectorIndex, setSectorIndex] = useState<number | null>(null);
+  const [entry, setEntry] = useState("");
+  const [hours, setHours] = useState("");
 
   const qc = useQueryClient();
   const seedFn = useServerFn(seedWorkspace);
@@ -43,9 +44,14 @@ export function OnboardingWizard({ open, onOpenChange }: { open: boolean; onOpen
 
   function addEmployee() {
     const v = name.trim();
-    if (!v) return;
-    setEmployees([...employees, { name: v, sector_index: sectorIndex, entry_time: entry, journey_hours: hours }]);
+    if (!v || sectorIndex === null || !entry || !hours) return;
+    setEmployees([
+      ...employees,
+      { name: v, sector_index: sectorIndex, entry_time: entry, journey_hours: Number(hours.replace(",", ".")) },
+    ]);
     setName("");
+    setEntry("");
+    setHours("");
   }
 
   return (
@@ -104,23 +110,23 @@ export function OnboardingWizard({ open, onOpenChange }: { open: boolean; onOpen
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs">Entrada</Label>
-                <Input type="time" value={entry} onChange={(e) => setEntry(e.target.value)} className="font-mono" />
+                <HhmmInput value={entry} onChange={setEntry} clock aria-label="Entrada" />
               </div>
               <div>
                 <Label className="text-xs">Jornada (h)</Label>
-                <Input type="number" min={1} max={12} value={hours} onChange={(e) => setHours(Number(e.target.value))} className="font-mono" />
+                <Input inputMode="decimal" placeholder="8" value={hours} onChange={(e) => setHours(e.target.value.replace(/[^\d.,]/g, "").slice(0, 4))} className="font-mono" />
               </div>
             </div>
             <div>
               <Label className="text-xs">Setor</Label>
-              <Select value={String(sectorIndex)} onValueChange={(v) => setSectorIndex(Number(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={sectorIndex === null ? "" : String(sectorIndex)} onValueChange={(v) => setSectorIndex(Number(v))}>
+                <SelectTrigger><SelectValue placeholder="Selecionar setor" /></SelectTrigger>
                 <SelectContent>
                   {sectors.map((s, i) => <SelectItem key={s} value={String(i)}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline" className="w-full" onClick={addEmployee}>
+            <Button variant="outline" className="w-full" disabled={!name.trim() || sectorIndex === null || !entry || !hours} onClick={addEmployee}>
               <Plus className="size-4 mr-1" /> Adicionar à lista
             </Button>
           </div>
