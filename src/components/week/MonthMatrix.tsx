@@ -45,6 +45,7 @@ export function MonthMatrix({
   month: string;
   onMonthChange: (m: string) => void;
 }) {
+  const drag = useShiftDrag();
   const shiftsFn = useServerFn(listShiftsByWeek);
   const empsFn = useServerFn(listEmployees);
 
