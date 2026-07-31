@@ -22,15 +22,38 @@ type ShiftRow = {
 type EmployeeRow = { id: string; name: string; sector_id: string | null };
 type SectorRow = { id: string; name: string };
 
+/** Turno cadastrado do setor (demand_templates): a demanda é POR TURNO. */
+export type DemandRow = {
+  id: string;
+  sector_id: string | null;
+  weekday: number;
+  start_time: string;
+  end_time: string;
+  headcount: number;
+  label?: string | null;
+};
+
 const toMin = (t: string) => {
-  const [h, m] = t.split(":").map(Number);
+  const [h, m] = t.slice(0, 5).split(":").map(Number);
   return h * 60 + m;
 };
+
+/** Janela em minutos, tratando virada de meia-noite (15:30–00:20 = 530 min). */
+const window_ = (start: string, end: string) => {
+  const s = toMin(start);
+  let e = toMin(end);
+  if (e <= s) e += 1440;
+  return { s, e };
+};
+
+const hhmm = (t: string) => t.slice(0, 5);
 
 export function computeAlerts(
   shifts: ShiftRow[],
   employees: EmployeeRow[],
   sectors: SectorRow[],
+  demands: DemandRow[] = [],
+  weekday?: number,
 ): Alert[] {
   const alerts: Alert[] = [];
 
@@ -56,9 +79,35 @@ export function computeAlerts(
     }
   }
 
-  // 2. Sectors with no active shift today.
-  const activeSectorIds = new Set(shifts.filter((s) => s.status !== "absent").map((s) => s.sector_id));
+  // 2. Cobertura POR TURNO: cada turno cadastrado do setor precisa do seu
+  // mínimo de pessoas. Um colaborador escalado na manhã não cobre a noite.
+  const todaysDemands = weekday === undefined ? [] : demands.filter((d) => d.weekday === weekday);
+  const active = shifts.filter((s) => s.status !== "absent");
+
+  for (const d of todaysDemands) {
+    const win = window_(d.start_time, d.end_time);
+    const covering = active.filter((s) => {
+      if ((s.sector_id ?? null) !== (d.sector_id ?? null)) return false;
+      const w = window_(s.start_time, s.end_time);
+      return w.s <= win.s && w.e >= win.e;
+    }).length;
+    if (covering < d.headcount) {
+      const sectorName = sectors.find((x) => x.id === d.sector_id)?.name;
+      const turno = d.label ? `${d.label} (${hhmm(d.start_time)}–${hhmm(d.end_time)})` : `${hhmm(d.start_time)}–${hhmm(d.end_time)}`;
+      alerts.push({
+        id: `demand-${d.id}`,
+        level: covering === 0 ? "critical" : "warning",
+        title: covering === 0 ? "Turno sem ninguém" : "Turno abaixo do mínimo",
+        detail: `${sectorName ? `${sectorName} · ` : ""}${turno} exige ${d.headcount} pessoa(s) e tem ${covering}.`,
+      });
+    }
+  }
+
+  // Setor sem nenhum turno ativo — só quando não há turnos cadastrados para
+  // hoje (com turnos cadastrados, os alertas acima já são mais precisos).
+  const activeSectorIds = new Set(active.map((s) => s.sector_id));
   for (const sec of sectors) {
+    if (todaysDemands.some((d) => d.sector_id === sec.id)) continue;
     if (!activeSectorIds.has(sec.id)) {
       alerts.push({
         id: `empty-sector-${sec.id}`,

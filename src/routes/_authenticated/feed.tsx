@@ -8,11 +8,12 @@ import { Plus, AlertTriangle, Rocket, Bell, Info } from "lucide-react";
 import { listSectors } from "@/lib/sectors.functions";
 import { listEmployees } from "@/lib/employees.functions";
 import { listShiftsByDay, listShiftsByWeek } from "@/lib/shifts.functions";
-import { todayISO, formatDatePt, mondayOf } from "@/lib/date-utils";
-import { computeAlerts } from "@/lib/alerts";
+import { todayISO, formatDatePt, mondayOf, weekdayOf } from "@/lib/date-utils";
+import { computeAlerts, type DemandRow } from "@/lib/alerts";
 import { evaluateShift } from "@/lib/clt-rules";
 import { toRuleEmployee } from "@/lib/clt/map";
 import { listHolidays, listOverrides } from "@/lib/compliance.functions";
+import { listDemands } from "@/lib/demand.functions";
 import type { Violation } from "@/lib/clt-rules";
 import type { DayShift, EmployeeWithProfile, OverrideRow, SectorRow, ShiftPatch, WeekShift } from "@/lib/types";
 import { CoverageSheet } from "@/components/CoverageSheet";
@@ -45,6 +46,7 @@ function FeedPage() {
   const weekFn = useServerFn(listShiftsByWeek);
   const empsFn = useServerFn(listEmployees);
   const holidaysFn = useServerFn(listHolidays);
+  const demandsFn = useServerFn(listDemands);
   const overridesFn = useServerFn(listOverrides);
 
   const weekStart = mondayOf(date);
@@ -59,6 +61,7 @@ function FeedPage() {
     queryFn: () => weekFn({ data: { week_start: weekStart } }) as Promise<WeekShift[]>,
   });
   const holidays = useQuery({ queryKey: ["holidays"], queryFn: () => holidaysFn() });
+  const demands = useQuery({ queryKey: ["demands"], queryFn: () => demandsFn() as Promise<DemandRow[]> });
 
   const dayShifts = shifts.data ?? [];
   const dayIds = dayShifts.map((s) => s.id);
@@ -110,6 +113,8 @@ function FeedPage() {
           dayShifts,
           sectorId ? employees.data.filter((e) => e.sector_id === sectorId) : employees.data,
           sectorId ? sectors.data.filter((s) => s.id === sectorId) : sectors.data,
+          (demands.data ?? []).filter((d) => !sectorId || d.sector_id === sectorId),
+          weekdayOf(date),
         )
       : [];
 
