@@ -13,6 +13,8 @@ export const monthlyReport = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { from, to } = monthBounds(data.month);
     const sb = context.supabase;
+    const { requirePro } = await import("@/lib/billing.server");
+    await requirePro(sb as never, context.userId, "month_report");
 
     const [employeesRes, shiftsRes, holidaysRes, overridesRes] = await Promise.all([
       sb.from("employees").select("*, sectors(name), compliance_profiles(*, agreements(*))").order("name"),
