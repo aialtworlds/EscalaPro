@@ -148,11 +148,22 @@ export function MonthMatrix({
                   </td>
                   {days.map((d) => {
                     const s = cell(emp.id, d);
+                    const key = `${emp.id}|${d}`;
                     return (
-                      <td key={d} className="p-0.5 text-center border-r border-border last:border-r-0">
+                      <td
+                        key={d}
+                        data-cell={key}
+                        data-shift-id={s?.id ?? ""}
+                        className={`p-0.5 text-center border-r border-border last:border-r-0 ${
+                          drag.hoverKey === key && drag.dragId ? "bg-primary/20 outline outline-1 outline-primary" : ""
+                        }`}
+                      >
                         {s ? (
                           <div
-                            className={`py-1 rounded text-[9px] font-mono font-bold ${
+                            onPointerDown={(e) => drag.startDrag(e, s.id)}
+                            className={`py-1 rounded text-[9px] font-mono font-bold cursor-grab touch-none select-none ${
+                              drag.dragId === s.id ? "opacity-40" : ""
+                            } ${
                               s.status === "absent"
                                 ? "bg-destructive/15 text-destructive"
                                 : "bg-primary/10 text-primary"
@@ -169,6 +180,7 @@ export function MonthMatrix({
                 </tr>
               ))}
             </tbody>
+
           </table>
         </div>
         {!employees.data?.length && (
