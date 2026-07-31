@@ -87,13 +87,14 @@ function SemanaPage() {
               type="button"
               aria-pressed={view === v}
               onClick={() => setView(v)}
-              className={`py-2 rounded text-[11px] font-bold uppercase border transition-colors ${
+              className={`py-2 rounded text-[11px] font-bold uppercase border transition-colors inline-flex items-center justify-center gap-1 ${
                 view === v
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-secondary text-muted-foreground border-border"
               }`}
             >
               {label}
+              {v === "month" && !plan.isPro && <Lock className="size-3" />}
             </button>
           ))}
         </div>
@@ -101,8 +102,15 @@ function SemanaPage() {
 
       {view === "month" ? (
         <div className="pt-3">
-          <MonthMatrix month={month} onMonthChange={setMonth} />
+          {plan.isPro ? (
+            <MonthMatrix month={month} onMonthChange={setMonth} />
+          ) : (
+            <div className="px-4">
+              <UpgradeCard feature="month_matrix" />
+            </div>
+          )}
         </div>
+
       ) : (
         <>
       <div className="px-4 pt-4 pb-2 print:pt-0">
