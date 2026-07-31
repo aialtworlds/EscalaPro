@@ -119,8 +119,9 @@ export function DemandSettings() {
         5. Turnos por Setor
       </h2>
       <p className="text-[11px] text-muted-foreground mb-3">
-        Os turnos reais de cada setor. O gerador de escala aloca apenas dentro deles, respeitando
-        a jornada de cada colaborador.
+        Os turnos reais de cada setor. O gerador usa exatamente estes horários (inclusive
+        virada de meia-noite) e só considera o turno coberto quando alguém do setor cumpre a
+        janela inteira — encostar no horário não conta.
       </p>
 
       <div className="bg-card border border-border rounded-xl p-4 space-y-3">
