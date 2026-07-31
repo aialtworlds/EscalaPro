@@ -110,6 +110,10 @@ export function MonthMatrix({
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
           {loading ? "Carregando…" : `${totalShifts} turno(s) no mês`}
         </p>
+        <p className="text-[10px] text-muted-foreground mt-1 print:hidden">
+          Toque e arraste um turno para outro dia/colaborador — soltar sobre outro turno troca os dois.
+        </p>
+
         <div className="grid grid-cols-2 gap-2 mt-2 print:hidden">
           <Button size="sm" variant="outline" className="text-xs" onClick={exportCsv}>
             <Download className="size-3.5 mr-1" /> CSV do mês
