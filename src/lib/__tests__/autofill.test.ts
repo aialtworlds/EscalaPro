@@ -163,3 +163,82 @@ describe("separação por setor e limites individuais", () => {
     expect(plan.gaps[0].reason).toContain("jornada");
   });
 });
+
+describe("demanda por setor respeita os turnos do gestor", () => {
+  const mon = "2026-07-27";
+  const morning = {
+    id: "m", sector_id: "coz", weekday: 1, start_time: "07:00", end_time: "15:00",
+    headcount: 1, label: "Manhã", sector_only: true,
+  };
+  const night = {
+    id: "n", sector_id: "coz", weekday: 1, start_time: "15:30", end_time: "00:20",
+    headcount: 1, label: "Noite", sector_only: true,
+  };
+
+  it("gera um turno por janela cadastrada, com os horários exatos", () => {
+    const plan = buildWeekPlan({
+      days: [mon],
+      demands: [morning, night],
+      employees: [emp("a", "Ana", "coz"), emp("b", "Bruno", "coz")],
+      constraints: [],
+      existing: [],
+    });
+    expect(plan.gaps).toHaveLength(0);
+    expect(plan.planned.map((p) => `${p.start_time}-${p.end_time}`).sort()).toEqual([
+      "07:00-15:00",
+      "15:30-00:20",
+    ]);
+    // Turnos diferentes não caem na mesma pessoa por causa da interjornada.
+    expect(new Set(plan.planned.map((p) => p.employee_id)).size).toBe(2);
+  });
+
+  it("turno existente que apenas encosta no horário não cobre a demanda", () => {
+    const plan = buildWeekPlan({
+      days: [mon],
+      demands: [night],
+      employees: [emp("a", "Ana", "coz"), emp("b", "Bruno", "coz")],
+      constraints: [],
+      existing: [{ employee_id: "a", sector_id: "coz", shift_date: mon, start_time: "07:00", end_time: "16:00" }],
+    });
+    expect(plan.planned).toHaveLength(1);
+    expect(plan.planned[0].employee_id).toBe("b");
+    expect(plan.planned[0].start_time).toBe("15:30");
+  });
+
+  it("turno existente idêntico cobre a demanda e nada é criado", () => {
+    const plan = buildWeekPlan({
+      days: [mon],
+      demands: [morning],
+      employees: [emp("a", "Ana", "coz"), emp("b", "Bruno", "coz")],
+      constraints: [],
+      existing: [{ employee_id: "a", sector_id: "coz", shift_date: mon, start_time: "07:00", end_time: "15:00" }],
+    });
+    expect(plan.planned).toHaveLength(0);
+    expect(plan.gaps).toHaveLength(0);
+  });
+
+  it("cobertura de outro setor não conta para a demanda do setor", () => {
+    const plan = buildWeekPlan({
+      days: [mon],
+      demands: [morning],
+      employees: [emp("a", "Ana", "coz")],
+      constraints: [],
+      existing: [{ employee_id: "x", sector_id: "salao", shift_date: mon, start_time: "07:00", end_time: "15:00" }],
+    });
+    expect(plan.planned).toHaveLength(1);
+    expect(plan.planned[0].sector_id).toBe("coz");
+  });
+
+  it("turno mais longo que a jornada + extras do colaborador abre lacuna", () => {
+    const longShift = { ...night, id: "l", start_time: "08:00", end_time: "22:00" };
+    const plan = buildWeekPlan({
+      days: [mon],
+      demands: [longShift],
+      employees: [{ ...emp("a", "Ana", "coz"), limits: { journeyHours: 8, maxOvertimeHours: 2, weeklyHours: 44, interJourneyHours: 11, maxDaysPerWeek: 6 } }],
+      constraints: [],
+      existing: [],
+    });
+    expect(plan.planned).toHaveLength(0);
+    expect(plan.gaps[0].reason).toContain("jornada");
+  });
+});
