@@ -42,6 +42,7 @@ export function AutofillDialog({
 
   const employees = useQuery({ queryKey: ["employees"], queryFn: () => empsFn() });
   const empName = (id: string) => employees.data?.find((e) => e.id === id)?.name ?? "—";
+  const locked = mode === "month" && !plan.isPro;
 
   const reset = () => { setRows(null); setGaps([]); };
 
