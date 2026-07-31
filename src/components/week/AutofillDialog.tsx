@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Lock } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -13,9 +13,6 @@ import { HhmmInput } from "@/components/HhmmInput";
 import { autofillWeek, applyWeekPlan } from "@/lib/autofill.functions";
 import { listEmployees } from "@/lib/employees.functions";
 import { WEEKDAY_LABELS, weekdayOf, trimTime } from "@/lib/date-utils";
-import { usePlan } from "@/hooks/usePlan";
-import { UpgradeCard } from "@/components/billing/UpgradeCard";
-import { PRO_REQUIRED_ERROR } from "@/lib/billing";
 
 type Draft = {
   label?: string | null;
@@ -32,7 +29,6 @@ export function AutofillDialog({
   open, onOpenChange, weekStart,
 }: { open: boolean; onOpenChange: (o: boolean) => void; weekStart: string }) {
   const qc = useQueryClient();
-  const plan = usePlan();
   const previewFn = useServerFn(autofillWeek);
   const applyFn = useServerFn(applyWeekPlan);
   const empsFn = useServerFn(listEmployees);
@@ -43,15 +39,8 @@ export function AutofillDialog({
 
   const employees = useQuery({ queryKey: ["employees"], queryFn: () => empsFn() });
   const empName = (id: string) => employees.data?.find((e) => e.id === id)?.name ?? "—";
-  const locked = mode === "month" && !plan.isPro;
 
   const reset = () => { setRows(null); setGaps([]); };
-  const errMsg = (e: unknown) => {
-    const m = e instanceof Error ? e.message : "Falha";
-    return m.includes(PRO_REQUIRED_ERROR)
-      ? "Gerar o mês inteiro faz parte do plano mensal."
-      : m;
-  };
 
   const preview = useMutation({
     mutationFn: () => previewFn({ data: { week_start: weekStart, mode, replace, preview: true } }),
@@ -67,7 +56,7 @@ export function AutofillDialog({
       setGaps(r.gaps as Gap[]);
       if (!r.planned.length) toast.info("Nada a alocar com a demanda atual.");
     },
-    onError: (e) => toast.error(errMsg(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
   });
 
   const apply = useMutation({
@@ -79,7 +68,7 @@ export function AutofillDialog({
       reset();
       onOpenChange(false);
     },
-    onError: (e) => toast.error(errMsg(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha"),
   });
 
   const dayLabel = (iso: string) => `${WEEKDAY_LABELS[weekdayOf(iso)]} ${iso.slice(8, 10)}`;
@@ -130,13 +119,11 @@ export function AutofillDialog({
                 }`}
               >
                 {label}
-                {m === "month" && !plan.isPro && <Lock className="size-3" />}
               </button>
             ))}
           </div>
         </div>
 
-        {mode === "month" && !plan.isPro && <UpgradeCard feature="month_autofill" compact />}
 
 
         <label className="flex items-start gap-2 cursor-pointer">
@@ -214,10 +201,10 @@ export function AutofillDialog({
         )}
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => preview.mutate()} disabled={preview.isPending || locked}>
+          <Button variant="outline" onClick={() => preview.mutate()} disabled={preview.isPending}>
             {preview.isPending ? "Calculando…" : rows ? "Recalcular" : "Pré-visualizar"}
           </Button>
-          <Button onClick={() => apply.mutate()} disabled={apply.isPending || locked || !rows || !rows.length}>
+          <Button onClick={() => apply.mutate()} disabled={apply.isPending || !rows || !rows.length}>
             {apply.isPending ? "Salvando…" : "Salvar escala"}
           </Button>
         </DialogFooter>

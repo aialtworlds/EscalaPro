@@ -9,8 +9,6 @@ import { monthlyReport } from "@/lib/report.functions";
 import { fmtMinutes, monthLabel, shiftMonth } from "@/lib/report";
 import { ROLE_LABELS, todayISO } from "@/lib/date-utils";
 import { COMPLIANCE_DISCLAIMER } from "@/lib/clt-rules";
-import { usePlan } from "@/hooks/usePlan";
-import { UpgradeCard } from "@/components/billing/UpgradeCard";
 
 export const Route = createFileRoute("/_authenticated/relatorio")({
   head: () => ({
@@ -28,12 +26,10 @@ export const Route = createFileRoute("/_authenticated/relatorio")({
 
 function ReportPage() {
   const [month, setMonth] = useState(() => todayISO().slice(0, 7));
-  const plan = usePlan();
   const fn = useServerFn(monthlyReport);
   const q = useQuery({
     queryKey: ["report", month],
     queryFn: () => fn({ data: { month } }),
-    enabled: plan.isPro,
   });
 
   const data = q.data;
@@ -61,14 +57,6 @@ function ReportPage() {
         <h1 className="text-lg font-bold">Relatório Mensal</h1>
       </div>
 
-      {!plan.isPro && !plan.isLoading && (
-        <div className="px-4 pb-4">
-          <UpgradeCard feature="month_report" />
-        </div>
-      )}
-
-      {!plan.isPro ? null : (
-      <>
       <div className="px-4 flex items-center justify-between gap-2">
 
         <div className="flex items-center gap-1">
@@ -152,8 +140,6 @@ function ReportPage() {
       </div>
 
       <p className="px-4 mt-4 text-[10px] leading-relaxed text-muted-foreground">{COMPLIANCE_DISCLAIMER}</p>
-      </>
-      )}
     </AppShell>
   );
 }
