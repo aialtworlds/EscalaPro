@@ -201,6 +201,16 @@ export function MonthMatrix({
           </p>
         )}
       </div>
+
+      {drag.active && drag.pos ? (
+        <div
+          className="fixed z-50 pointer-events-none px-2 py-1 rounded bg-primary text-primary-foreground text-[10px] font-bold shadow-lg"
+          style={{ left: drag.pos.x + 12, top: drag.pos.y - 12 }}
+        >
+          {drag.dragLabel ?? "Mover turno"}
+        </div>
+      ) : null}
     </>
   );
 }
+
