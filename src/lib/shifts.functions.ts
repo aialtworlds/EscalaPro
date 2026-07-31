@@ -231,6 +231,68 @@ export const moveShift = createServerFn({ method: "POST" })
     return { ok: true, swapped: false, shift: row };
   });
 
+// Realocação rápida: arrastar um colaborador para uma célula da matriz.
+// Com target_shift_id o turno existente passa para o colaborador; sem ele,
+// cria um turno usando a jornada padrão do colaborador.
+export const assignEmployeeToCell = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      employee_id: z.string().uuid(),
+      shift_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      target_shift_id: z.string().uuid().nullable().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: emp, error: empErr } = await context.supabase
+      .from("employees")
+      .select("id, name, sector_id, entry_time, journey_hours")
+      .eq("id", data.employee_id)
+      .single();
+    if (empErr) throw new Error(empErr.message);
+
+    if (data.target_shift_id) {
+      const { data: row, error } = await context.supabase
+        .from("shifts")
+        .update({ employee_id: emp.id, is_freelancer: false, freelancer_label: null })
+        .eq("id", data.target_shift_id)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      await context.supabase.from("activity_log").insert({
+        owner_id: context.userId,
+        event_type: "shift.reassigned",
+        payload: { shift_id: row.id, employee_id: emp.id, name: emp.name },
+      });
+      return { ok: true, mode: "reassigned" as const, shift: row };
+    }
+
+    const start = String(emp.entry_time).slice(0, 8).padEnd(8, ":00").slice(0, 8);
+    const [h, m] = start.split(":").map(Number);
+    const total = (h ?? 8) * 60 + (m ?? 0) + Math.round(Number(emp.journey_hours ?? 8) * 60);
+    const end = `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}:00`;
+
+    const { data: row, error } = await context.supabase
+      .from("shifts")
+      .insert({
+        owner_id: context.userId,
+        employee_id: emp.id,
+        sector_id: emp.sector_id,
+        shift_date: data.shift_date,
+        start_time: start,
+        end_time: end,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    await context.supabase.from("activity_log").insert({
+      owner_id: context.userId,
+      event_type: "shift.created",
+      payload: { shift_id: row.id, date: data.shift_date, via: "drag" },
+    });
+    return { ok: true, mode: "created" as const, shift: row };
+  });
+
 // Revert an absence back to scheduled and remove the absence record.
 export const clearAbsence = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
