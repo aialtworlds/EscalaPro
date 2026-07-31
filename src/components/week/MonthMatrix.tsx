@@ -11,6 +11,7 @@ import { listShiftsByWeek } from "@/lib/shifts.functions";
 import { listEmployees } from "@/lib/employees.functions";
 import { addDays, mondayOf, trimTime, WEEKDAY_LABELS, weekdayOf } from "@/lib/date-utils";
 import { monthBounds, monthLabel, shiftMonth } from "@/lib/report";
+import { useShiftDrag } from "@/components/week/useShiftDrag";
 
 type Shift = {
   id: string;
