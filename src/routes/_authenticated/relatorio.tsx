@@ -61,7 +61,16 @@ function ReportPage() {
         <h1 className="text-lg font-bold">Relatório Mensal</h1>
       </div>
 
+      {!plan.isPro && !plan.isLoading && (
+        <div className="px-4 pb-4">
+          <UpgradeCard feature="month_report" />
+        </div>
+      )}
+
+      {!plan.isPro ? null : (
+      <>
       <div className="px-4 flex items-center justify-between gap-2">
+
         <div className="flex items-center gap-1">
           <Button size="icon" variant="outline" className="size-8" onClick={() => setMonth((m) => shiftMonth(m, -1))} aria-label="Mês anterior">
             <ChevronLeft className="size-4" />
