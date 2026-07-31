@@ -159,7 +159,13 @@ function SemanaPage() {
             <tbody>
               {employees.data?.map((emp) => (
                 <tr key={emp.id} className="border-t border-border">
-                  <td className="p-2 font-medium border-r border-border sticky left-0 bg-card z-10 truncate max-w-[100px]">
+                  <td
+                    onPointerDown={(e) => drag.startEmployeeDrag(e, emp.id, emp.name)}
+                    className={`p-2 font-medium border-r border-border sticky left-0 bg-card z-10 truncate max-w-[100px] cursor-grab touch-none select-none ${
+                      drag.dragEmployeeId === emp.id ? "text-primary" : ""
+                    }`}
+                    title="Arraste o nome para alocar em um dia"
+                  >
                     {emp.name}
                   </td>
                   {days.map((d) => {
@@ -171,7 +177,7 @@ function SemanaPage() {
                         data-cell={key}
                         data-shift-id={s?.id ?? ""}
                         className={`p-1 text-center border-r border-border last:border-r-0 ${
-                          drag.hoverKey === key && drag.dragId ? "bg-primary/20 outline outline-1 outline-primary" : ""
+                          drag.hoverKey === key && drag.active ? "bg-primary/20 outline outline-1 outline-primary" : ""
                         }`}
                       >
                         {s ? (
