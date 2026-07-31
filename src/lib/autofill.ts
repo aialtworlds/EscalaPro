@@ -101,6 +101,10 @@ function span(date: string, start: string, end: string) {
 
 const overlaps = (a: { s: number; e: number }, b: { s: number; e: number }) => a.s < b.e && b.s < a.e;
 
+/** Turno com setor só é coberto por gente lançada no mesmo setor. */
+const sameSector = (sectorId: string | null, demand: { sector_id: string | null }) =>
+  !demand.sector_id || sectorId === demand.sector_id;
+
 /** A restrição bloqueia esse colaborador nesse intervalo? */
 export function isBlocked(c: AutoConstraint, date: string, start: string, end: string): boolean {
   if (c.kind === "afastamento") {
@@ -195,14 +199,17 @@ export function buildWeekPlan(input: {
       const duration = sp.e - sp.s;
       const sectorOnly = demand.sector_only !== false && !!demand.sector_id;
 
-      // Quantos já cobrem esse turno: mesmo setor (quando o turno tem setor) e horário.
-      const alreadyCovered = input.existing.filter(
-        (e) =>
-          e.shift_date === date &&
-          (!demand.sector_id || (e.sector_id ?? null) === demand.sector_id) &&
-          overlaps(span(e.shift_date, e.start_time, e.end_time), sp),
-      ).length;
+      // Quem já cobre este turno. Cobrir = o turno existente abraçar a janela
+      // inteira definida pelo gestor (mesmo setor, quando o turno tem setor).
+      // Um turno que só encosta no horário (ex.: 07:00–16:00 contra a noite
+      // 15:30–00:20) NÃO conta como cobertura — a demanda continua aberta.
+      const alreadyCovered = input.existing.filter((e) => {
+        if (!sameSector(e.sector_id ?? null, demand)) return false;
+        const x = span(e.shift_date, e.start_time, e.end_time);
+        return x.s <= sp.s && x.e >= sp.e;
+      }).length;
       const needed = Math.max(0, demand.headcount - alreadyCovered);
+
 
       for (let slot = 0; slot < needed; slot++) {
         const reasons: string[] = [];
