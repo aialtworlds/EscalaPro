@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/semana")({
 });
 
 function SemanaPage() {
+  const plan = usePlan();
   const [view, setView] = useState<"week" | "month">("week");
   const [month, setMonth] = useState(() => todayISO().slice(0, 7));
   const [weekStart, setWeekStart] = useState(mondayOf(todayISO()));
