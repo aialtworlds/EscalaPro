@@ -17,9 +17,6 @@ import { ShareDialog } from "@/components/week/ShareDialog";
 import { HistoryDialog } from "@/components/week/HistoryDialog";
 import { MonthMatrix } from "@/components/week/MonthMatrix";
 import { useShiftDrag } from "@/components/week/useShiftDrag";
-import { usePlan } from "@/hooks/usePlan";
-import { UpgradeCard } from "@/components/billing/UpgradeCard";
-import { Lock } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/semana")({
   head: () => ({ meta: [{ title: "Planilha Semanal — EscalaPro OS" }, { name: "description", content: "Matriz semanal de escala." }] }),
@@ -27,7 +24,6 @@ export const Route = createFileRoute("/_authenticated/semana")({
 });
 
 function SemanaPage() {
-  const plan = usePlan();
   const [view, setView] = useState<"week" | "month">("week");
   const [month, setMonth] = useState(() => todayISO().slice(0, 7));
   const [weekStart, setWeekStart] = useState(mondayOf(todayISO()));
@@ -94,7 +90,6 @@ function SemanaPage() {
               }`}
             >
               {label}
-              {v === "month" && !plan.isPro && <Lock className="size-3" />}
             </button>
           ))}
         </div>
@@ -102,13 +97,7 @@ function SemanaPage() {
 
       {view === "month" ? (
         <div className="pt-3">
-          {plan.isPro ? (
-            <MonthMatrix month={month} onMonthChange={setMonth} />
-          ) : (
-            <div className="px-4">
-              <UpgradeCard feature="month_matrix" />
-            </div>
-          )}
+          <MonthMatrix month={month} onMonthChange={setMonth} />
         </div>
 
       ) : (
