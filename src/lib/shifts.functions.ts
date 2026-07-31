@@ -168,6 +168,69 @@ export const updateShift = createServerFn({ method: "POST" })
     return row;
   });
 
+// Move a shift to another employee and/or day (drag & drop on the matrix).
+export const moveShift = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      employee_id: z.string().uuid().nullable(),
+      shift_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      swap_with: z.string().uuid().nullable().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    if (data.swap_with) {
+      const { data: other, error: e0 } = await context.supabase
+        .from("shifts")
+        .select("id, employee_id, shift_date")
+        .eq("id", data.swap_with)
+        .single();
+      if (e0) throw new Error(e0.message);
+      const { data: src, error: e1 } = await context.supabase
+        .from("shifts")
+        .select("id, employee_id, shift_date")
+        .eq("id", data.id)
+        .single();
+      if (e1) throw new Error(e1.message);
+      // Park the source row on a temporary date to dodge unique collisions.
+      await context.supabase
+        .from("shifts")
+        .update({ employee_id: null, shift_date: src.shift_date })
+        .eq("id", src.id);
+      const { error: e2 } = await context.supabase
+        .from("shifts")
+        .update({ employee_id: src.employee_id, shift_date: src.shift_date })
+        .eq("id", other.id);
+      if (e2) throw new Error(e2.message);
+      const { error: e3 } = await context.supabase
+        .from("shifts")
+        .update({ employee_id: other.employee_id, shift_date: other.shift_date })
+        .eq("id", src.id);
+      if (e3) throw new Error(e3.message);
+      await context.supabase.from("activity_log").insert({
+        owner_id: context.userId,
+        event_type: "shift.swapped",
+        payload: { a: src.id, b: other.id },
+      });
+      return { ok: true, swapped: true };
+    }
+
+    const { data: row, error } = await context.supabase
+      .from("shifts")
+      .update({ employee_id: data.employee_id, shift_date: data.shift_date })
+      .eq("id", data.id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    await context.supabase.from("activity_log").insert({
+      owner_id: context.userId,
+      event_type: "shift.moved",
+      payload: { shift_id: data.id, employee_id: data.employee_id, shift_date: data.shift_date },
+    });
+    return { ok: true, swapped: false, shift: row };
+  });
+
 // Revert an absence back to scheduled and remove the absence record.
 export const clearAbsence = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
