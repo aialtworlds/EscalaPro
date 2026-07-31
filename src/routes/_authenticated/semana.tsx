@@ -212,7 +212,7 @@ function SemanaPage() {
                         key={d}
                         data-cell={`freela|${d}`}
                         className={`p-1 text-center border-r border-border last:border-r-0 ${
-                          drag.hoverKey === `freela|${d}` && drag.dragId
+                          drag.hoverKey === `freela|${d}` && drag.active
                             ? "bg-primary/20 outline outline-1 outline-primary"
                             : ""
                         }`}
