@@ -26,11 +26,17 @@ export const Route = createFileRoute("/_authenticated/relatorio")({
 
 function ReportPage() {
   const [month, setMonth] = useState(() => todayISO().slice(0, 7));
+  const plan = usePlan();
   const fn = useServerFn(monthlyReport);
-  const q = useQuery({ queryKey: ["report", month], queryFn: () => fn({ data: { month } }) });
+  const q = useQuery({
+    queryKey: ["report", month],
+    queryFn: () => fn({ data: { month } }),
+    enabled: plan.isPro,
+  });
 
   const data = q.data;
   const rows = (data?.rows ?? []).filter((r) => r.shifts > 0 || r.absences > 0);
+
 
   function exportCsv() {
     if (!data) return;
