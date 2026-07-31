@@ -202,7 +202,15 @@ function SemanaPage() {
                   {days.map((d) => {
                     const count = shifts.data?.filter((x) => !x.employee_id && x.shift_date === d).length ?? 0;
                     return (
-                      <td key={d} className="p-1 text-center border-r border-border last:border-r-0">
+                      <td
+                        key={d}
+                        data-cell={`freela|${d}`}
+                        className={`p-1 text-center border-r border-border last:border-r-0 ${
+                          drag.hoverKey === `freela|${d}` && drag.dragId
+                            ? "bg-primary/20 outline outline-1 outline-primary"
+                            : ""
+                        }`}
+                      >
                         {count > 0 ? (
                           <div className="py-1 rounded text-[9px] font-mono font-bold bg-warning/15 text-warning-foreground">
                             +{count}
