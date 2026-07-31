@@ -17,6 +17,9 @@ import { ShareDialog } from "@/components/week/ShareDialog";
 import { HistoryDialog } from "@/components/week/HistoryDialog";
 import { MonthMatrix } from "@/components/week/MonthMatrix";
 import { useShiftDrag } from "@/components/week/useShiftDrag";
+import { usePlan } from "@/hooks/usePlan";
+import { UpgradeCard } from "@/components/billing/UpgradeCard";
+import { Lock } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/semana")({
   head: () => ({ meta: [{ title: "Planilha Semanal — EscalaPro OS" }, { name: "description", content: "Matriz semanal de escala." }] }),
