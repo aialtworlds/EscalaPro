@@ -32,9 +32,20 @@ function AuthPage() {
   const { next } = Route.useSearch();
   const target = safeNext(next);
   const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("escalapro_saved_email") || "";
+    }
+    return "";
+  });
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [saveEmail, setSaveEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      return !!localStorage.getItem("escalapro_saved_email");
+    }
+    return false;
+  });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -69,6 +80,13 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        
+        if (saveEmail) {
+          localStorage.setItem("escalapro_saved_email", email);
+        } else {
+          localStorage.removeItem("escalapro_saved_email");
+        }
+        
         navigate({ to: target });
       }
     } catch (err) {
@@ -158,6 +176,23 @@ function AuthPage() {
                 className="h-12 rounded-none border-0 border-b border-border bg-transparent px-0 text-base focus-visible:border-primary focus-visible:ring-0"
               />
             </div>
+            {mode === "signin" && (
+              <div className="flex items-center space-x-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="saveEmail"
+                  checked={saveEmail}
+                  onChange={(e) => setSaveEmail(e.target.checked)}
+                  className="size-4 rounded border-border bg-transparent text-primary focus:ring-primary"
+                />
+                <Label
+                  htmlFor="saveEmail"
+                  className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground cursor-pointer hover:text-foreground transition"
+                >
+                  preciso que o email do operador tenha a opção de ficar salvo na tela de login
+                </Label>
+              </div>
+            )}
             {mode !== "forgot" && (
             <div className="space-y-1.5">
               <Label htmlFor="password" className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
