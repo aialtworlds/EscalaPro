@@ -119,13 +119,7 @@ function AuthPage() {
 
       <div className="relative flex min-h-screen flex-col px-6 py-10">
         {/* Top status strip */}
-        <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-          <span className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            Console v1.0
-          </span>
-          <span>verifique o txto da tela de entrada, voce esta sobreescrevendo o que eu coloco aqui no chat direto na tela do app, isso não é o correto</span>
-        </div>
+        {/* Top status strip removida por solicitação do usuário */}
 
         {/* Hero brand */}
         <div className="flex flex-1 flex-col justify-center">
