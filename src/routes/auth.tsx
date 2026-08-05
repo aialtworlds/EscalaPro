@@ -124,7 +124,7 @@ function AuthPage() {
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
             Console v1.0
           </span>
-          <span>mas vc deixou o texto q eu te pedi na tela, isso nao é o comportamento esprado</span>
+          <span>verifique o txto da tela de entrada, voce esta sobreescrevendo o que eu coloco aqui no chat direto na tela do app, isso não é o correto</span>
         </div>
 
         {/* Hero brand */}
